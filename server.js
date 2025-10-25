@@ -9,7 +9,11 @@ app.use(express.json());
 
 // Endpoint raíz para verificar funcionamiento
 app.get('/', (req, res) => {
-    res.send('Servidor UPCONS funcionando correctamente.');
+    res.send(`
+        <h2>Servidor UPCONS funcionando correctamente.</h2>
+        <p>Para conversar con el bot, usa el endpoint <b>/chat</b> enviando un mensaje por POST.<br>
+        Ejemplo: <code>POST /chat</code> con <code>{ "message": "hola" }</code></p>
+    `);
 });
 
 // Endpoint para chat con OpenAI y productos

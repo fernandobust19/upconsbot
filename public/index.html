@@ -19,5 +19,21 @@
         </div>
     </div>
     <script src="script.js"></script>
+    <script>
+        async function enviarMensaje() {
+            const mensaje = document.getElementById('user-input').value;
+            const res = await fetch('/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: mensaje })
+            });
+            const data = await res.json();
+            document.getElementById('chat-box').innerHTML += `<div class="message user-message"><p>${mensaje}</p></div>`;
+            document.getElementById('chat-box').innerHTML += `<div class="message bot-message"><p>${data.reply || data.error}</p></div>`;
+            document.getElementById('user-input').value = '';
+        }
+
+        document.getElementById('send-btn').addEventListener('click', enviarMensaje);
+    </script>
 </body>
 </html>

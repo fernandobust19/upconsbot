@@ -81,7 +81,7 @@ function getUserProfile(req) {
   const now = Date.now();
   const existing = userProfiles.get(key);
   if (existing && now - existing.updatedAt < USER_TTL_MS) return existing;
-  const fresh = { nombre: null, proforma: [], updatedAt: now };
+  const fresh = { nombre: null, proforma: [], history: [], updatedAt: now };
   userProfiles.set(key, fresh);
   return fresh;
 }
@@ -226,15 +226,21 @@ app.post('/chat', async (req, res) => {
   const hasOpenAI = isValidOpenAIKey(process.env.OPENAI_API_KEY);
 
   const profile = getUserProfile(req);
+  // Limitar el historial a los últimos 10 intercambios (user + bot) para no exceder el contexto
+  const conversationHistory = profile.history?.slice(-10) || [];
+
+
   if (!profile.nombre) {
     if (/^(hola|buenos dias|buenos días|buenas tardes|buenas noches)/i.test(userMessage)) {
-      return res.json({ reply: '¡Hola! Soy ConstructoBot. ¿Cuál es tu nombre?' });
+      return res.json({ reply: '¡Hola! Soy un asesor de ventas con inteligencia artificial. Para darte una atención más personalizada, ¿cuál es tu nombre?' });
     }
     if (hasOpenAI) {
       const nombreDetectado = await validarYExtraerNombre(userMessage);
       if (nombreDetectado) {
-        updateUserProfile(req, { nombre: nombreDetectado });
-        return res.json({ reply: `¡Hola ${nombreDetectado}! Un gusto. Puedo ayudarte a crear una proforma. ¿Qué materiales necesitas?` });
+        const reply = `¡Excelente, ${nombreDetectado}! Un gusto. Puedo ayudarte a crear una proforma. ¿Qué materiales necesitas?`;
+        const newHistory = [...conversationHistory, { role: 'user', content: userMessage }, { role: 'assistant', content: reply }];
+        updateUserProfile(req, { nombre: nombreDetectado, history: newHistory });
+        return res.json({ reply: reply });
       }
     }
   }
@@ -263,7 +269,7 @@ app.post('/chat', async (req, res) => {
     const proformaActualJson = JSON.stringify(profile.proforma);
 
     const systemPrompt = `
-Eres ConstructoBot, un asistente técnico experto de UPCONS Importador, con conocimientos de arquitectura e ingeniería. Tu tono es profesional, preciso y orientado a soluciones. Responde siempre en español.
+Eres un asesor de ventas con inteligencia artificial de UPCONS Importador, con conocimientos de arquitectura e ingeniería. Tu tono es profesional, preciso y muy amable. Responde siempre en español.
 ${nombreTexto}
 
 Tu objetivo principal es ser un GESTOR DE PROFORMAS. Ayuda al cliente a construir una cotización. El cliente puede agregar productos, ver la proforma, o quitar ítems.
@@ -283,6 +289,7 @@ Instrucciones de respuesta:
   - Si el cliente pide "ver mi proforma" o "cómo va la cuenta", muéstrale la tabla y el total.
   - Si pide "quitar las tejas", elimínalas de la proforma.
   - Si pide "empezar de nuevo" o "limpiar", vacía la proforma.
+- **Tono Amable**: Sé siempre amable y halaga al cliente cuando sea natural hacerlo (ej. "¡Excelente elección!", "Buena pregunta, veo que sabes lo que buscas."). Esto ayuda a crear confianza.
 - **Formato de Tabla**: Cuando muestres la proforma o una lista de productos, SIEMPRE usa una tabla Markdown.
 - **Ofrecer Enlace a Proforma**: Cuando la proforma tenga productos, finaliza tu respuesta ofreciendo un enlace para verla en una página separada: "Puedes ver tu proforma detallada aquí: /proforma".
 - **Precisión y Búsqueda**: Basa TODAS tus respuestas sobre productos y precios estrictamente en el catálogo JSON. Si no encuentras un producto exacto, ofrece las alternativas más cercanas del catálogo.
@@ -331,8 +338,9 @@ Ejemplo de formato de respuesta:
       const completion = await openai.chat.completions.create({
         model: 'gpt-4-turbo-2024-04-09',
         response_format: { type: 'json_object' },
-        messages: [
+        messages: [ // Construir el historial completo para la IA
           { role: 'system', content: systemPrompt },
+          ...conversationHistory,
           { role: 'user', content: userMessage },
         ],
         temperature: 0.6,
@@ -348,8 +356,10 @@ Ejemplo de formato de respuesta:
       const botResponse = botResponseJson.reply;
       const newProforma = botResponseJson.proforma;
 
+      const newHistory = [...conversationHistory, { role: 'user', content: userMessage }, { role: 'assistant', content: botResponse }];
+
       if (Array.isArray(newProforma)) {
-        updateUserProfile(req, { proforma: newProforma });
+        updateUserProfile(req, { proforma: newProforma, history: newHistory });
       }
 
       return res.json({ reply: botResponse || fallbackReply() });

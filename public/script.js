@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const renderInteractiveProductTable = (markdown) => {
         const lines = markdown.split('\n').filter(line => line.trim().startsWith('|') && !line.includes('---'));
-        const headerLine = lines.shift();
+        const headerLine = lines.find(line => line.includes('Producto') && line.includes('Precio')) || lines.shift();
         if (!headerLine) return markdown; // Fallback to old rendering
 
         const headers = headerLine.split('|').map(h => h.trim()).filter(Boolean);

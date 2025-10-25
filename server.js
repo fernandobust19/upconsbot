@@ -41,7 +41,11 @@ async function fetchProductsAndCache() {
     console.info(`Productos cargados desde archivo: ${data.length} ítems en ${Date.now() - started}ms.`);
     return productsCache.data;
   } catch (err) {
-    console.error(`Error al cargar productos desde ${filePath}:`, err.message);
+    if (err.code === 'ENOENT') {
+      console.error(`❌ Error Crítico: El archivo de productos "${filePath}" no fue encontrado.`);
+    } else {
+      console.error(`❌ Error al leer o parsear "${filePath}":`, err.message);
+    }
     productsCache = { data: [], fetchedAt: Date.now() }; // Cache vacío en caso de error
     return [];
   }
@@ -111,7 +115,14 @@ function queryTokens(q) {
   return Array.from(new Set(base));
 }
 function productText(p) {
-  return normalize([p?.nombre, p?.categoria, p?.descripcion, p?.medida, p?.medidas, p?.marca].filter(Boolean).join(' '));
+  const text = [p?.nombre, p?.categoria, p?.descripcion, p?.medida, p?.medidas, p?.marca, p?.precio].filter(Boolean).join(' ');
+  // Expandir abreviaturas comunes para mejorar la búsqueda
+  const expandedText = text
+    .replace(/\bcua\b/gi, 'cuadrado')
+    .replace(/\brectang\b/gi, 'rectangular')
+    .replace(/\bneg\b/gi, 'negro')
+    .replace(/\bgalv\b/gi, 'galvanizado');
+  return normalize(expandedText);
 }
 
 // ------------------
@@ -224,6 +235,12 @@ Eres ConstructoBot, un asistente técnico experto de UPCONS Importador, con cono
 ${nombreTexto}
 
 Objetivo: Asesorar al cliente para que encuentre la mejor solución técnica para su proyecto usando el catálogo de productos provisto. Tu meta es ser un recurso confiable, no solo un vendedor.
+
+Interpretación de Términos (para tu conocimiento interno):
+- **Abreviaturas**: 'cua' = cuadrado, 'rectang' = rectangular, 'neg' = negro, 'galv' = galvanizado, 'm' = metros.
+- **Calidad**: 'primera' es de alta calidad, 'segunda' o 'especial' son opciones más económicas.
+- **Dimensiones de Tubos**: Un formato como "25x50x2mm" significa un tubo de 25mm (2.5 cm) por 50mm (5 cm) con un espesor de 2mm. Explícalo de forma sencilla si es necesario.
+- **Dimensiones de Planchas**: Un formato como "1.22 X 2.44 / 0.40 ESPESOR" se refiere a una plancha de 1.22m por 2.44m con 0.40mm de espesor.
 
 Instrucciones de respuesta:
 - **Manejo de Consultas**: Si el cliente pide un producto con una especificación (medida, color) que no tienes, NO digas simplemente "no tenemos". En su lugar, busca el producto base en el catálogo y responde informando sobre las variantes que SÍ tienes. Ejemplo: "No disponemos de teja española de 6 metros, pero puedo ofrecerte teja española en medidas de 3.60m y 4.20m. ¿Alguna de estas se ajusta a tu proyecto?".

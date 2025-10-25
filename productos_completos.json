@@ -5,15 +5,15 @@
   },
   {
     "producto": "PLANCHA GALVANIZADA 1.22 X 2.44 / 0.90 ESPESOR",
-    "precio": 25.0
+    "precio": 25
   },
   {
     "producto": "PLANCHA GALVANIZADA 1.22 X 2.44 / 0.70 ESPESOR",
-    "precio": 21.0
+    "precio": 21
   },
   {
     "producto": "PLANCHA GALVANIZADA 1.22 X 2.44 / 0.50 ESPESOR",
-    "precio": 13.0
+    "precio": 13
   },
   {
     "producto": "BARRA primera (1/4)",
@@ -25,7 +25,7 @@
   },
   {
     "producto": "BARRA cuadrada (3/8)",
-    "precio": 5.0
+    "precio": 5
   },
   {
     "producto": "BARRA cuadrada (1/2)",
@@ -38,5 +38,961 @@
   {
     "producto": "ANGULO primera Neg (20X3MM)",
     "precio": 6.75
+  },
+  {
+    "producto": "ANGULO primera Neg (25X3MM)",
+    "precio": 7.5
+  },
+  {
+    "producto": "ANGULO primera Neg (30X3MM)",
+    "precio": 10.78
+  },
+  {
+    "producto": "ANGULO primera Neg (40X3MM)",
+    "precio": 13.35
+  },
+  {
+    "producto": "ANGULO primera Neg (40X4MM)",
+    "precio": 18
+  },
+  {
+    "producto": "ANGULO primera Neg (50X3MM)",
+    "precio": 17
+  },
+  {
+    "producto": "TUBO REDON GALV SEGUNDA (1 1/2 1.5MM)",
+    "precio": 14.5
+  },
+  {
+    "producto": "TUBO REDON GALV ESPECIAL (2 1.5MM)",
+    "precio": 17
+  },
+  {
+    "producto": "TUBO REDON GALV ESPECIAL (1 1/4 1.1MM)",
+    "precio": 6.16
+  },
+  {
+    "producto": "TUBO REDON GALV ESPECIAL (1 1/4 1.5MM)",
+    "precio": 13.09
+  },
+  {
+    "producto": "TUBO REDON GALV ESPECIAL (25x25 1.5MM)",
+    "precio": 8.37
+  },
+  {
+    "producto": "TUBO CUA NEG SEGUNDA 12x12 0.90MM",
+    "precio": 3
+  },
+  {
+    "producto": "TUBO CUA NEG PRIMERA 20X20 1.1MM",
+    "precio": 6
+  },
+  {
+    "producto": "TUBO CUA NEG PRIMERA 20X20 0.90MM",
+    "precio": 4.82
+  },
+  {
+    "producto": "TUBO CUA NEG PRIMERA 20X20 0.75MM",
+    "precio": 4.07
+  },
+  {
+    "producto": "TUBO CUA NEG SEGUNDA 20X20 2MM",
+    "precio": 5.5
+  },
+  {
+    "producto": "TUBO CUA NEG PRIMERA 20X20 1.5MM",
+    "precio": 6.4
+  },
+  {
+    "producto": "TUBO CUA GALV SEGUNDA 20X20 1.5MM",
+    "precio": 8.88
+  },
+  {
+    "producto": "TUBO CUA NEG PRIMERA 25X25 1.5MM",
+    "precio": 8.35
+  },
+  {
+    "producto": "TUBO CUA NEG SEGUNDA 25X25 1.5MM",
+    "precio": 8.5
+  },
+  {
+    "producto": "TUBO CUA GALV SEGUNDA 25X25 1.2MM",
+    "precio": 7
+  },
+  {
+    "producto": "TUBO CUA NEG PRIMERA 30X30X1.5MM",
+    "precio": 11.1
+  },
+  {
+    "producto": "TUBO CUA NEG SEGUNDA 30X30X 2MM",
+    "precio": 12
+  },
+  {
+    "producto": "TUBO CUA GALV SEGUNDA 30X30X1.5MM",
+    "precio": 10.5
+  },
+  {
+    "producto": "TUBO CUA GALV PRIMERA 30X30X1.5MM",
+    "precio": 13.2
+  },
+  {
+    "producto": "TUBO CUA NEG PRIMERA 40X40X1.5MM",
+    "precio": 16.5
+  },
+  {
+    "producto": "TUBO CUA GALV SEGUNDA 40X40X 1.5MM",
+    "precio": 0
+  },
+  {
+    "producto": "TUBO CUA GALV ESPECIAL 40X40X 2MM",
+    "precio": 16
+  },
+  {
+    "producto": "TUBO CUA NEG PRIMERA. 40X40X 2MM",
+    "precio": 16.9
+  },
+  {
+    "producto": "TUBO CUA GALV ESPECIAL 50X50X1.5MM",
+    "precio": 17
+  },
+  {
+    "producto": "TUBO CUA GALV ESPECIAL 50X50X2MM",
+    "precio": 22
+  },
+  {
+    "producto": "TUBO CUA NEG PRIMERA 50X50X1.5MM",
+    "precio": 19.15
+  },
+  {
+    "producto": "TUBO CUA NEG PRIMERA 50X50X2MM",
+    "precio": 21.5
+  },
+  {
+    "producto": "TUBO CUA NEG SEGUNDA 50X50X3MM",
+    "precio": 27
+  },
+  {
+    "producto": "TUBO CUA NEG PRIMERA 75X75X2MM",
+    "precio": 33.25
+  },
+  {
+    "producto": "TUBO CUA NEG PRIMERA 75X75X1.8MM",
+    "precio": 30.5
+  },
+  {
+    "producto": "TUBO CUA GALV primera 75X75X2MM",
+    "precio": 45
+  },
+  {
+    "producto": "TUBO CUA NEG PRIMERA 75X75X3MM",
+    "precio": 51.6
+  },
+  {
+    "producto": "TUBO CUA NEG PRIMERA 100X100X1.8MM",
+    "precio": 40
+  },
+  {
+    "producto": "TUBO CUA NEG PRIMERA 100X100X2MM",
+    "precio": 41.5
+  },
+  {
+    "producto": "TUBO CUA NEG PRIMERA 100X100X3MM",
+    "precio": 69
+  },
+  {
+    "producto": "TUBO CUA NEG SEGUNDA 100X100X3MM",
+    "precio": 62
+  },
+  {
+    "producto": "TUBO CUA NEG 150X150X3MM",
+    "precio": 130
+  },
+  {
+    "producto": "TUBO TREBOL NEG Especial 6m",
+    "precio": 10
+  },
+  {
+    "producto": "TUBO RECTANG NEG segunda 20X40X1.5MM",
+    "precio": 9.5
+  },
+  {
+    "producto": "TUBO RECTANG NEG segunda 20X40X1.5MM",
+    "precio": 10.27
+  },
+  {
+    "producto": "TUBO RECTANG GAL segunda 20X40X2MM",
+    "precio": 13.2
+  },
+  {
+    "producto": "TUBO RECTANG NEG segunda 25X50X1.5MM",
+    "precio": 12.83
+  },
+  {
+    "producto": "TUBO RECTANG GAL segunda 25X50X1.5MM",
+    "precio": 12.85
+  },
+  {
+    "producto": "TUBO RECTANG GAL segunda 25X50X2MM",
+    "precio": 13.5
+  },
+  {
+    "producto": "TUBO RECTANG NEG segunda 25X50X2MM",
+    "precio": 13.34
+  },
+  {
+    "producto": "TUBO RECTANG NEG primera 25X50X2MM",
+    "precio": 18
+  },
+  {
+    "producto": "TUBO RECTANG NEG segunda 60X40X2MM",
+    "precio": 21
+  },
+  {
+    "producto": "TUBO RECTANG NEG segunda 70X30X2MM",
+    "precio": 18
+  },
+  {
+    "producto": "TUBO RECTANG NEG segunda 70X30X1.5MM",
+    "precio": 17
+  },
+  {
+    "producto": "TUBO RECTANG NEG primera 80X40X1.8MM",
+    "precio": 23.9
+  },
+  {
+    "producto": "TUBO RECTANG NEG primera 80X40X1.5MM",
+    "precio": 20
+  },
+  {
+    "producto": "TUBO RECTANG NEG primera 80X40X2MM",
+    "precio": 28
+  },
+  {
+    "producto": "TUBO RECTANG NEG primera 80X40X3MM",
+    "precio": 43.75
+  },
+  {
+    "producto": "TUBO RECTANG NEG primera 100X50X2MM",
+    "precio": 33.3
+  },
+  {
+    "producto": "TUBO RECTANG NEG primera 100X50X3MM",
+    "precio": 51.6
+  },
+  {
+    "producto": "TUBO RECTANG NEG segunda 150 x50 2 mm",
+    "precio": 41
+  },
+  {
+    "producto": "TUBO RECTANG NEG primera 150 x100 2 mm",
+    "precio": 76
+  },
+  {
+    "producto": "TUBO RECTANG NEG primera 150 x100 3mm",
+    "precio": 106
+  },
+  {
+    "producto": "TUBO RECTANG NEG segunda 200 x100 3mm",
+    "precio": 120
+  },
+  {
+    "producto": "CORREA NEG primera 60X30X2 mm",
+    "precio": 12
+  },
+  {
+    "producto": "CORREA NEG primera 60X30X1.5 mm",
+    "precio": 9.2
+  },
+  {
+    "producto": "CORREA NEG primera 80X40X1.5mm",
+    "precio": 13
+  },
+  {
+    "producto": "CORREA NEG primera 80X40X1.8mm",
+    "precio": 16
+  },
+  {
+    "producto": "CORREA NEG primera 80X40X2mm",
+    "precio": 16
+  },
+  {
+    "producto": "CORREA GALV primera 80X40X2mm",
+    "precio": 17
+  },
+  {
+    "producto": "CORREA NEG primera 80X40X3MM",
+    "precio": 23.7
+  },
+  {
+    "producto": "CORREA NEG primera 100X50X2MM",
+    "precio": 20
+  },
+  {
+    "producto": "CORREA NEG primera 100X50X3MM",
+    "precio": 29.5
+  },
+  {
+    "producto": "CORREA NEG primera 125X50X2MM",
+    "precio": 22
+  },
+  {
+    "producto": "CORREA NEG primera 125X50X3MM",
+    "precio": 33
+  },
+  {
+    "producto": "CORREA NEG primera 150X50X2MM",
+    "precio": 26
+  },
+  {
+    "producto": "CORREA NEG primera 150X50X3MM",
+    "precio": 36.5
+  },
+  {
+    "producto": "CORREA NEG primera 200X50X2MM",
+    "precio": 30
+  },
+  {
+    "producto": "CANAL U 100x50x2MM",
+    "precio": 21.3
+  },
+  {
+    "producto": "CANAL LANFORD de 40",
+    "precio": 14.5
+  },
+  {
+    "producto": "Malla corrugada 4 -10",
+    "precio": 42
+  },
+  {
+    "producto": "Malla corrugada 4 -15",
+    "precio": 29
+  },
+  {
+    "producto": "Malla corrugada 5 -10",
+    "precio": 0
+  },
+  {
+    "producto": "Malla corrugada 5 -15",
+    "precio": 0
+  },
+  {
+    "producto": "Malla corrugada 6 -10",
+    "precio": 0
+  },
+  {
+    "producto": "Malla electro corrugada 5 -15",
+    "precio": 0
+  },
+  {
+    "producto": "Teja española 6.14 m. X 1.05 FONDO NARANJA",
+    "precio": 42.9
+  },
+  {
+    "producto": "Teja española 5.04 m. X 1.05 FONDO NARANJA",
+    "precio": 35
+  },
+  {
+    "producto": "Teja española 4.16 m. X 1.05 FONDO NARANJA",
+    "precio": 29.2
+  },
+  {
+    "producto": "Teja española 3.70 m. X 1.05 FONDO NARANJA",
+    "precio": 25.9
+  },
+  {
+    "producto": "Teja española 3.06 m. X 1.05 FONDO NARANJA",
+    "precio": 21.45
+  },
+  {
+    "producto": "Teja española 2.40 m. X 1.05 FONDO NARANJA",
+    "precio": 18
+  },
+  {
+    "producto": "Teja española 6.14 m. X 1.05 FONDO BLANCO",
+    "precio": 42.9
+  },
+  {
+    "producto": "Teja española 5.04 m. X 1.05 FONDO BLANCO",
+    "precio": 35
+  },
+  {
+    "producto": "Teja española 4.16 m. X 1.05 FONDO BLANCO",
+    "precio": 29.2
+  },
+  {
+    "producto": "Teja española 3.70 m. X 1.05 FONDO BLANCO",
+    "precio": 25.9
+  },
+  {
+    "producto": "Teja española 3.06 m. X 1.05 FONDO BLANCO",
+    "precio": 21.45
+  },
+  {
+    "producto": "Teja española 2.40 m. X 1.05 FONDO BLANCO",
+    "precio": 18
+  },
+  {
+    "producto": "Teja española 6.14 m. X 1.05 TERRACOTA",
+    "precio": 42.37
+  },
+  {
+    "producto": "Teja española 5.04 m. X 1.05 TERRACOTA",
+    "precio": 34.78
+  },
+  {
+    "producto": "Teja española 4.16 m. X 1.05 TERRACOTA",
+    "precio": 28.7
+  },
+  {
+    "producto": "Teja española 3.70 m. X 1.05 TERRACOTA",
+    "precio": 25.53
+  },
+  {
+    "producto": "Teja española 3.06 m. X 1.05 TERRACOTA",
+    "precio": 21.11
+  },
+  {
+    "producto": "Teja española 2.40 m. X 1.05 TERRACOTA",
+    "precio": 16.56
+  },
+  {
+    "producto": "POLICARBONATO Teja española TRASLUCIDA 6.00 m. X 1.05",
+    "precio": 84
+  },
+  {
+    "producto": "POLICARBONATO Teja española TRASLUCIDA 5.00 m. X 1.05",
+    "precio": 68
+  },
+  {
+    "producto": "POLICARBONATO Teja española TRASLUCIDA 4.00 m. X 1.05",
+    "precio": 55
+  },
+  {
+    "producto": "POLICARBONATO Teja española TRASLUCIDA 3 m. X 1.05",
+    "precio": 42
+  },
+  {
+    "producto": "POLICARBONATO Teja española OPAL 6.00 m. X 1.05",
+    "precio": 115
+  },
+  {
+    "producto": "POLICARBONATO Teja española OPAL 3.00 m. X 1.05",
+    "precio": 57
+  },
+  {
+    "producto": "POLICARBONATO Teja española OPAL 2.40 m. X 1.05",
+    "precio": 45.6
+  },
+  {
+    "producto": "CUMBRERO PRINCIPAL teja/ FONDO BLANCO 1.05 m",
+    "precio": 9.5
+  },
+  {
+    "producto": "CUMBRERO PRINCIPAL teja/ FONDO BLANCO",
+    "precio": 9.5
+  },
+  {
+    "producto": "CUMBRERO LATERAR teja española 1.05 m. Naranja",
+    "precio": 9.5
+  },
+  {
+    "producto": "CUMBRERO PRINCIPAL TERRACOTA",
+    "precio": 9.5
+  },
+  {
+    "producto": "CONEXION Y teja española Naranja/B",
+    "precio": 9.5
+  },
+  {
+    "producto": "PUNTA teja española Naranja/B",
+    "precio": 9.5
+  },
+  {
+    "producto": "NOVALOSA DECK PRIMERA espesor 065 6M",
+    "precio": 47
+  },
+  {
+    "producto": "NOVALOSA DECK ESPECIAL espesor 065 5M",
+    "precio": 41.5
+  },
+  {
+    "producto": "NOVALOSA DECK ESPECIAL espesor 065 4M",
+    "precio": 33
+  },
+  {
+    "producto": "ZINC PRIMERA 6.0 M",
+    "precio": 12
+  },
+  {
+    "producto": "ZINC SEGUNDA 6.0 M",
+    "precio": 10
+  },
+  {
+    "producto": "ZINC PRIMERA 5.0 M",
+    "precio": 10
+  },
+  {
+    "producto": "ZINC PRIMERA 4.0 M",
+    "precio": 8.2
+  },
+  {
+    "producto": "ZINC ESPECIAL 3.60 M",
+    "precio": 6
+  },
+  {
+    "producto": "ALUTECHO 030 ESPECIAL 6 M",
+    "precio": 25
+  },
+  {
+    "producto": "ALUTECHO 030 PRIMERA 5 M",
+    "precio": 22
+  },
+  {
+    "producto": "ALUTECHO 030 PRIMERA 4 M",
+    "precio": 16.5
+  },
+  {
+    "producto": "ALUTECHO 030 primera. 3 M",
+    "precio": 11
+  },
+  {
+    "producto": "ALUTECHO 030 PRIMERA Terracota 6 M",
+    "precio": 34.75
+  },
+  {
+    "producto": "POLICARBONATO mega techo TORNOAZUL 6.00 m. X 1.10",
+    "precio": 55
+  },
+  {
+    "producto": "POLICARBONATO mega techo TORNOAZUL 5.00 m. X 1.10",
+    "precio": 45
+  },
+  {
+    "producto": "POLICARBONATO mega techo TORNOAZUL 4.20 m. X 1.10",
+    "precio": 40
+  },
+  {
+    "producto": "POLICARBONATO mega techo TORNOAZUL 3.00 m. X 1.10",
+    "precio": 28
+  },
+  {
+    "producto": "POLICARBONATO mega techo CRISTAL 6.00 m. X 1.10",
+    "precio": 50
+  },
+  {
+    "producto": "POLICARBONATO mega techo CRISTAL 5.00 m. X 1.10",
+    "precio": 41
+  },
+  {
+    "producto": "POLICARBONATO mega techo CRISTAL 4.20 m. X 1.10",
+    "precio": 35
+  },
+  {
+    "producto": "POLICARBONATO mega techo CRISTAL 3.00 m. X 1.10",
+    "precio": 25
+  },
+  {
+    "producto": "POLICARBONATO ZINC TRASLUCIDO 6.00 m. X 0.80",
+    "precio": 31
+  },
+  {
+    "producto": "POLICARBONATO ZINC TRASLUCIDO 3.60 m. X 0.80",
+    "precio": 22
+  },
+  {
+    "producto": "POLICARBONATO ZINC TRASLUCIDO 3.00 m. X 0",
+    "precio": 16
+  },
+  {
+    "producto": "PLATI ( 12X3MM)",
+    "precio": 2.67
+  },
+  {
+    "producto": "PLATI ( 20X3MM)",
+    "precio": 3.8
+  },
+  {
+    "producto": "PLATI ( 25X3MM)",
+    "precio": 4.93
+  },
+  {
+    "producto": "PLATI ( 30X3MM)",
+    "precio": 6.3
+  },
+  {
+    "producto": "PLATI ( 40X3MM)",
+    "precio": 8
+  },
+  {
+    "producto": "PLATI ( 50X3MM)",
+    "precio": 11
+  },
+  {
+    "producto": "PUERTAS PANELADAS",
+    "precio": 23.5
+  },
+  {
+    "producto": "PLACA DE 15X15X6MM",
+    "precio": 3
+  },
+  {
+    "producto": "PLACA DE 20X20X6MM",
+    "precio": 3.5
+  },
+  {
+    "producto": "PLACA DE 30X30X6MM",
+    "precio": 7.5
+  },
+  {
+    "producto": "PLACA DE 35X35X6MM",
+    "precio": 9.5
+  },
+  {
+    "producto": "ELECTRODO ESAB 60/11 FUNDA 5Kg",
+    "precio": 19.5
+  },
+  {
+    "producto": "ELECTRODO AGA 60/11 FUNDA 5Kg",
+    "precio": 28.23
+  },
+  {
+    "producto": "ELECTRODO ESAB 60/11 (1Kg)",
+    "precio": 4.1
+  },
+  {
+    "producto": "ELECTRODO AGA 60/11 (1Kg)",
+    "precio": 5.65
+  },
+  {
+    "producto": "ELECTRODO AGA 70/18 kilo 5Kg",
+    "precio": 7.6
+  },
+  {
+    "producto": "DISCO DE CORTE ABREC 14 pulgadas",
+    "precio": 7
+  },
+  {
+    "producto": "DISCO DE CORTE NORTON 9 pulgadas",
+    "precio": 3.7
+  },
+  {
+    "producto": "DISCO DE CORTE NORTON 7 pulgadas",
+    "precio": 2.67
+  },
+  {
+    "producto": "DISCO DE CORTE NORTON 4 1/2 pulgadas",
+    "precio": 1.65
+  },
+  {
+    "producto": "DISCO DE CORTE ABREK 4 1/2 pulgadas",
+    "precio": 1.05
+  },
+  {
+    "producto": "DISCO DE CORTE ABREK 7 pulgadas",
+    "precio": 1.8
+  },
+  {
+    "producto": "DISCO DE CORTE ABREK 9 pulgadas",
+    "precio": 2.6
+  },
+  {
+    "producto": "DISCO DE CORTE ABREK 14 pulgadas",
+    "precio": 6.5
+  },
+  {
+    "producto": "DISCO FLAT 4 1/2 pulgadas",
+    "precio": 1.23
+  },
+  {
+    "producto": "DISCO DE DESBASTE NORTON 7 pulgadas",
+    "precio": 3.6
+  },
+  {
+    "producto": "DISCO DE DESBASTE NORTON 4 1/2 pulgadas",
+    "precio": 2.05
+  },
+  {
+    "producto": "Sintético UNIDAD Galón",
+    "precio": 13
+  },
+  {
+    "producto": "ANTICORROSIVO GALON",
+    "precio": 12.5
+  },
+  {
+    "producto": "ANTICORROSIVO LITRO",
+    "precio": 4
+  },
+  {
+    "producto": "TIÑER litro",
+    "precio": 1.35
+  },
+  {
+    "producto": "TIÑER GALON",
+    "precio": 5
+  },
+  {
+    "producto": "ENVASE GALON",
+    "precio": 0.4
+  },
+  {
+    "producto": "ENVASE litro - $0.20",
+    "precio": 0.2
+  },
+  {
+    "producto": "AUTOPERFORANTES + CAPUCHON PARA TEJA ESPAÑOLA",
+    "precio": 0.3
+  },
+  {
+    "producto": "AUTOPERFORANTES 3/4",
+    "precio": 0.05
+  },
+  {
+    "producto": "AUTOPERFORANTES 1 pulg.",
+    "precio": 0.05
+  },
+  {
+    "producto": "AUTOPERFORANTES 2 pulg.",
+    "precio": 0.06
+  },
+  {
+    "producto": "AUTOPERFORANTES 2 1/2",
+    "precio": 0.06
+  },
+  {
+    "producto": "AUTOPERFORANTES 3",
+    "precio": 0.07
+  },
+  {
+    "producto": "CANAL AGUA LLUVIA K7 / 6METROS",
+    "precio": 27.5
+  },
+  {
+    "producto": "CANAN K6 6metros",
+    "precio": 20
+  },
+  {
+    "producto": "CANAL AGUA LLUVIA GRAB/ 6 METROS",
+    "precio": 19.6
+  },
+  {
+    "producto": "CANAL AGUA LLUVIA LISO/ 6 METROS",
+    "precio": 18
+  },
+  {
+    "producto": "CANAL AGUA LLUVIA GRAB/ 5 METROS",
+    "precio": 16.3
+  },
+  {
+    "producto": "CANAL AGUA LLUVIA LISO/ 5 METROS",
+    "precio": 15
+  },
+  {
+    "producto": "CANAL AGUA LLUVIA GRAB/ 4 METROS",
+    "precio": 13.2
+  },
+  {
+    "producto": "CANAL AGUA LLUVIA LISO/ 4 METROS",
+    "precio": 12
+  },
+  {
+    "producto": "CANAL AGUA LLUVIA GRAB/ 3 METROS",
+    "precio": 10
+  },
+  {
+    "producto": "CANAL AGUA LLUVIA NARANJA LISO/ 6 METROS",
+    "precio": 24
+  },
+  {
+    "producto": "CANAL AGUA LLUVIA NARANJA LISO/ 5 METROS",
+    "precio": 19
+  },
+  {
+    "producto": "CANAL AGUA LLUVIA NARANJA LISO/ 4 METROS",
+    "precio": 16
+  },
+  {
+    "producto": "CANAL AGUA LLUVIA NARANJA LISO/ 3 METROS",
+    "precio": 12
+  },
+  {
+    "producto": "SOPORTE DE CANAL TIRA",
+    "precio": 1.8
+  },
+  {
+    "producto": "TAPA DE CANAL AGUA LLUVIA K5",
+    "precio": 1.65
+  },
+  {
+    "producto": "TAPA DE CANAL AGUA LLUVIA K7",
+    "precio": 1.75
+  },
+  {
+    "producto": "TAPA DE CANAL AGUA LLUVIA NARANJA",
+    "precio": 1.75
+  },
+  {
+    "producto": "PITON bajante",
+    "precio": 1.65
+  },
+  {
+    "producto": "SOPORTE de canal platina",
+    "precio": 2.25
+  },
+  {
+    "producto": "SOPORTE de canal Tira",
+    "precio": 1.75
+  },
+  {
+    "producto": "CERRADURA FORTE 370",
+    "precio": 18
+  },
+  {
+    "producto": "CERRADURA FORTE 700",
+    "precio": 20
+  },
+  {
+    "producto": "SILICON CARTUCHO",
+    "precio": 3.5
+  },
+  {
+    "producto": "GUANTES OPERADOR CUERO",
+    "precio": 2.05
+  },
+  {
+    "producto": "CHOVA TERRACOTA 20CM X5M",
+    "precio": 15
+  },
+  {
+    "producto": "CHOVA TERRACOTA 10CM X5M",
+    "precio": 10
+  },
+  {
+    "producto": "CHOVA 10cm X 10M ALUMBAND",
+    "precio": 14.5
+  },
+  {
+    "producto": "CHOVA 10cm X 5M ALUMBAND",
+    "precio": 10
+  },
+  {
+    "producto": "CHOVA 20cm X 5M ALUMBAND",
+    "precio": 14
+  },
+  {
+    "producto": "COPA ACOPLE TALADRO 5/16",
+    "precio": 1
+  },
+  {
+    "producto": "PERNO EXPANSION 1/2 X 2",
+    "precio": 0.3
+  },
+  {
+    "producto": "PERNO EXPANSION 1/2 X 2 1/2",
+    "precio": 0.35
+  },
+  {
+    "producto": "PERNO EXPANSION 1/2 X 3",
+    "precio": 0.4
+  },
+  {
+    "producto": "PERNO EXPANSION 3/8X2 1/2",
+    "precio": 0.25
+  },
+  {
+    "producto": "BROCA METAL 5/32 4mm negra",
+    "precio": 0.7
+  },
+  {
+    "producto": "BROCA METAL 5/32 4mm Titanium",
+    "precio": 1
+  },
+  {
+    "producto": "BROCA METAL 1/2 12mm",
+    "precio": 5.05
+  },
+  {
+    "producto": "BROCA METAL 1/4 6mm",
+    "precio": 2.51
+  },
+  {
+    "producto": "BROCA METAL 1/8 3mm",
+    "precio": 1.31
+  },
+  {
+    "producto": "BROCA METAL 3/16 5mm",
+    "precio": 1.92
+  },
+  {
+    "producto": "BROCA METAL 5/16 8mm",
+    "precio": 3.13
+  },
+  {
+    "producto": "TIRAFONDO 1/4X2\"",
+    "precio": 0.06
+  },
+  {
+    "producto": "TIRAFONDO 1/4X2\" 1/2",
+    "precio": 0.07
+  },
+  {
+    "producto": "TIRAFONDO 1/4X3\"",
+    "precio": 0.09
+  },
+  {
+    "producto": "TUBO PVC 3\" PACIFICO",
+    "precio": 6
+  },
+  {
+    "producto": "PEGA TUBO PEQUEÑA",
+    "precio": 1
+  },
+  {
+    "producto": "CODO PVC 45 grados 3pulg.",
+    "precio": 1.2
+  },
+  {
+    "producto": "CODO PVC 90 grados 3pulg",
+    "precio": 1.2
+  },
+  {
+    "producto": "GONCE 1\" X 2 acciones",
+    "precio": 4.26
+  },
+  {
+    "producto": "GONCE 1\" X 3 acciones",
+    "precio": 5.13
+  },
+  {
+    "producto": "GONCE 1/2\" X 2 acciones",
+    "precio": 0.87
+  },
+  {
+    "producto": "GONCE 1/2\" X 3 acciones",
+    "precio": 1.29
+  },
+  {
+    "producto": "GONCE 3/4\" X 2 acciones",
+    "precio": 2.36
+  },
+  {
+    "producto": "GONCE 3/4\" X 3 acciones",
+    "precio": 3.6
+  },
+  {
+    "producto": "GONCE 3/8\" X 2 acciones",
+    "precio": 0.52
+  },
+  {
+    "producto": "GONCE 3/8\" X 3 acciones",
+    "precio": 0.92
+  },
+  {
+    "producto": "GONCE 5/8\" X 2 acciones",
+    "precio": 1.54
+  },
+  {
+    "producto": "GONCE 5/8\" X 3 acciones",
+    "precio": 2.16
   }
 ]

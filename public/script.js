@@ -4,17 +4,51 @@ document.addEventListener('DOMContentLoaded', () => {
     const userInput = document.getElementById('user-input');
     const sendBtn = document.getElementById('send-btn');
 
+    const renderInteractiveProductTable = (markdown) => {
+        const lines = markdown.split('\n').filter(line => line.trim().startsWith('|') && !line.includes('---'));
+        const headerLine = lines.shift();
+        if (!headerLine) return markdown; // Fallback to old rendering
+
+        const headers = headerLine.split('|').map(h => h.trim()).filter(Boolean);
+
+        let tableHtml = `<table><thead><tr><th>${headers.join('</th><th>')}</th><th>Cantidad</th><th></th></tr></thead><tbody>`;
+
+        lines.forEach((line, index) => {
+            const parts = line.split('|').map(s => s.trim()).filter(Boolean);
+            if (parts.length >= 2) {
+                const productName = parts[0];
+                const productPrice = parts[1];
+                tableHtml += `
+                    <tr>
+                        <td>${productName}</td>
+                        <td>${productPrice}</td>
+                        <td>
+                            <input type="number" class="quantity-input" id="qty-input-${index}" min="1" value="1" style="width: 60px;">
+                        </td>
+                        <td>
+                            <button class="add-to-proforma-btn" data-product-name="${productName}" data-input-id="qty-input-${index}">Añadir</button>
+                        </td>
+                    </tr>
+                `;
+            }
+        });
+
+        tableHtml += '</tbody></table>';
+        return tableHtml;
+    };
+
     const addMessage = (text, sender) => {
         const messageElement = document.createElement('div');
         messageElement.classList.add('message', `${sender}-message`);
         
-        // Renderizar Markdown (simplificado para tablas y enlaces)
         const p = document.createElement('div');
-        p.innerHTML = text
-            .replace(/\|(.+)\|(.+)\|/g, '<table><tr><th>$1</th><th>$2</th></tr>')
-            .replace(/\|(.+)\|/g, '<tr><td>$1</td></tr>')
-            .replace(/<\/tr><table>/g, '</table>')
-            .replace(/(\/proforma)/g, '<a href="$1" target="_blank">$1</a>');
+
+        if (sender === 'bot' && text.includes('| Producto ') && text.includes('| Precio ')) {
+            p.innerHTML = renderInteractiveProductTable(text);
+        } else {
+            // Renderizado normal para otros mensajes y tablas (como proformas)
+            p.innerHTML = text.replace(/(\/proforma)/g, '<a href="$1" target="_blank">$1</a>');
+        }
 
         messageElement.appendChild(p);
         
@@ -23,7 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const handleSendMessage = async () => {
-        const message = userInput.value.trim();
+        const message = userInput.value.trim(); // Keep this for user-typed messages
         if (message === '') return;
 
         addMessage(message, 'user');
@@ -51,6 +85,22 @@ document.addEventListener('DOMContentLoaded', () => {
             addMessage('Lo siento, no puedo responder en este momento.', 'bot');
         }
     };
+
+    // Event delegation for dynamically added buttons
+    chatBox.addEventListener('click', (e) => {
+        if (e.target && e.target.classList.contains('add-to-proforma-btn')) {
+            const productName = e.target.getAttribute('data-product-name');
+            const inputId = e.target.getAttribute('data-input-id');
+            const quantityInput = document.getElementById(inputId);
+            const quantity = quantityInput.value;
+
+            if (productName && quantity) {
+                const message = `Añadir ${quantity} de ${productName}`;
+                userInput.value = message;
+                handleSendMessage();
+            }
+        }
+    });
 
     sendBtn.addEventListener('click', handleSendMessage);
     userInput.addEventListener('keypress', (e) => {

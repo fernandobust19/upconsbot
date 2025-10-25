@@ -121,7 +121,8 @@ function productText(p) {
     .replace(/\bcua\b/gi, 'cuadrado')
     .replace(/\brectang\b/gi, 'rectangular')
     .replace(/\bneg\b/gi, 'negro')
-    .replace(/\bgalv\b/gi, 'galvanizado');
+    .replace(/\bgalv\b/gi, 'galvanizado')
+    .replace(/\bmts\b/gi, 'm'); // Normalizar metros
   return normalize(expandedText);
 }
 
@@ -270,6 +271,7 @@ Interpretación de Términos (para tu conocimiento interno):
 - **Calidad**: 'primera' es de alta calidad, 'segunda' o 'especial' son opciones más económicas.
 - **Dimensiones de Tubos**: Un formato como "25x50x2mm" significa un tubo de 25mm (2.5 cm) por 50mm (5 cm) con un espesor de 2mm. Explícalo de forma sencilla si es necesario.
 - **Dimensiones de Planchas**: Un formato como "1.22 X 2.44 / 0.40 ESPESOR" se refiere a una plancha de 1.22m por 2.44m con 0.40mm de espesor.
+- **Tolerancia en Medidas**: Sé flexible. Si un cliente pide "teja de 6m", y en el catálogo tienes "Teja española 6.14 m.", asume que se refiere a esa. Sin embargo, si pide "teja de 3m", NO ofrezcas la de "3.70m" como si fuera la misma, sino como una alternativa cercana. Usa tu juicio para medidas similares.
 
 Instrucciones de respuesta:
 - **Gestión de Proforma**:

@@ -81,7 +81,7 @@ function getUserProfile(req) {
   const now = Date.now();
   const existing = userProfiles.get(key);
   if (existing && now - existing.updatedAt < USER_TTL_MS) return existing;
-  const fresh = { nombre: null, updatedAt: now };
+  const fresh = { nombre: null, proforma: [], updatedAt: now };
   userProfiles.set(key, fresh);
   return fresh;
 }
@@ -153,6 +153,30 @@ app.post('/admin/refresh-products', async (req, res) => {
   }
 });
 
+app.get('/proforma', (req, res) => {
+  const profile = getUserProfile(req);
+  if (!profile || profile.proforma.length === 0) {
+    return res.status(404).send('<h1>No hay productos en la proforma.</h1>');
+  }
+
+  let total = 0;
+  const itemsHtml = profile.proforma
+    .map((item) => {
+      const subtotal = (item.cantidad || 0) * (item.precio || 0);
+      total += subtotal;
+      return `<tr>
+        <td>${item.cantidad}</td>
+        <td>${item.nombre}</td>
+        <td>$${item.precio.toFixed(2)}</td>
+        <td>$${subtotal.toFixed(2)}</td>
+      </tr>`;
+    })
+    .join('');
+
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Proforma UPCONS</title><style>body{font-family:sans-serif;padding:2em}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:8px;text-align:left}th{background-color:#f2f2f2}tfoot{font-weight:bold}</style></head><body><h1>Proforma - UPCONS Importador</h1><p>Cliente: ${profile.nombre || 'N/A'}</p><table><thead><tr><th>Cantidad</th><th>Producto</th><th>P. Unitario</th><th>Subtotal</th></tr></thead><tbody>${itemsHtml}</tbody><tfoot><tr><td colspan="3">Total</td><td>$${total.toFixed(2)}</td></tr></tfoot></table></body></html>`;
+  res.send(html);
+});
+
 // ------------------
 // IA: extracción de nombre
 // ------------------
@@ -205,7 +229,7 @@ app.post('/chat', async (req, res) => {
       const nombreDetectado = await validarYExtraerNombre(userMessage);
       if (nombreDetectado) {
         updateUserProfile(req, { nombre: nombreDetectado });
-        return res.json({ reply: `¡Hola ${nombreDetectado}! Un gusto. ¿En qué puedo ayudarte hoy?` });
+        return res.json({ reply: `¡Hola ${nombreDetectado}! Un gusto. Puedo ayudarte a crear una proforma. ¿Qué materiales necesitas?` });
       }
     }
   }
@@ -230,12 +254,17 @@ app.post('/chat', async (req, res) => {
     const nombreTexto = profile.nombre
       ? `Hablas con ${profile.nombre}, un cliente interesado en materiales de construcción.`
       : '';
+    
+    const proformaActualJson = JSON.stringify(profile.proforma);
+
     const systemPrompt = `
 Eres ConstructoBot, un asistente técnico experto de UPCONS Importador, con conocimientos de arquitectura e ingeniería. Tu tono es profesional, preciso y orientado a soluciones. Responde siempre en español.
 ${nombreTexto}
 
-Objetivo: Asesorar al cliente para que encuentre la mejor solución técnica para su proyecto usando el catálogo de productos provisto. Tu meta es ser un recurso confiable, no solo un vendedor.
+Tu objetivo principal es ser un GESTOR DE PROFORMAS. Ayuda al cliente a construir una cotización. El cliente puede agregar productos, ver la proforma, o quitar ítems.
 
+La proforma actual del cliente es: ${proformaActualJson}
+ 
 Interpretación de Términos (para tu conocimiento interno):
 - **Abreviaturas**: 'cua' = cuadrado, 'rectang' = rectangular, 'neg' = negro, 'galv' = galvanizado, 'm' = metros.
 - **Calidad**: 'primera' es de alta calidad, 'segunda' o 'especial' son opciones más económicas.
@@ -243,10 +272,16 @@ Interpretación de Términos (para tu conocimiento interno):
 - **Dimensiones de Planchas**: Un formato como "1.22 X 2.44 / 0.40 ESPESOR" se refiere a una plancha de 1.22m por 2.44m con 0.40mm de espesor.
 
 Instrucciones de respuesta:
-- **Manejo de Consultas**: Si el cliente pide un producto con una especificación (medida, color) que no tienes, NO digas simplemente "no tenemos". En su lugar, busca el producto base en el catálogo y responde informando sobre las variantes que SÍ tienes. Ejemplo: "No disponemos de teja española de 6 metros, pero puedo ofrecerte teja española en medidas de 3.60m y 4.20m. ¿Alguna de estas se ajusta a tu proyecto?".
+- **Gestión de Proforma**:
+  - Si el cliente pide agregar productos (ej: "5 tubos de 20x20"), actualiza la proforma. Si un producto ya existe, suma la nueva cantidad.
+  - Si el cliente pide "ver mi proforma" o "cómo va la cuenta", muéstrale la tabla y el total.
+  - Si pide "quitar las tejas", elimínalas de la proforma.
+  - Si pide "empezar de nuevo" o "limpiar", vacía la proforma.
+- **Formato de Tabla**: Cuando muestres la proforma o una lista de productos, SIEMPRE usa una tabla Markdown.
+- **Ofrecer Enlace a Proforma**: Cuando la proforma tenga productos, finaliza tu respuesta ofreciendo un enlace para verla en una página separada: "Puedes ver tu proforma detallada aquí: /proforma".
+- **Precisión y Búsqueda**: Basa TODAS tus respuestas sobre productos y precios estrictamente en el catálogo JSON. Si no encuentras un producto exacto, ofrece las alternativas más cercanas del catálogo.
 - **Precisión ante todo**: Basa TODAS tus respuestas sobre productos y precios estrictamente en el catálogo JSON. No inventes productos, medidas, ni precios. Si un producto no está en la lista, indícalo claramente y ofrece la mejor alternativa técnica que sí tengas.
 - **Preguntas Clave**: Si el cliente es ambiguo, haz 1 o 2 preguntas técnicas para aclarar (ej. "¿Para qué tipo de estructura necesita el tubo?" o "¿Busca un acabado brillante o mate para el anticorrosivo?").
-- **Brevedad y Claridad**: Sé conciso (3-6 líneas). Usa viñetas para listar productos o especificaciones, facilitando la lectura.
 - **Información de Contacto**: Ofrece los datos de contacto (WhatsApp, sucursales) solo cuando sea lógico, como para confirmar stock de grandes cantidades, coordinar una visita o si el cliente lo solicita explícitamente.
 
 Contexto de UPCONS:
@@ -260,7 +295,14 @@ Contexto de UPCONS:
 Catálogo JSON (para grounding, no lo repitas completo):
 ${productsJson}
 
-Recuerda, eres un experto. Usa el nombre del cliente (${profile.nombre || 'cliente'}) para personalizar la conversación.`;
+RESPUESTA FINAL: Tu respuesta DEBE ser un objeto JSON con dos claves: "reply" (tu respuesta conversacional en texto para el cliente) y "proforma" (un array de objetos JSON con la lista de productos actualizada de la proforma, con los campos "nombre", "cantidad" y "precio"). Si no hay cambios en la proforma, devuelve el array original.
+Ejemplo de formato de respuesta:
+{
+  "reply": "¡Claro! He añadido 10 tubos a tu proforma. El total actual es $64.00. ¿Necesitas algo más?",
+  "proforma": [
+    { "nombre": "TUBO CUA NEG PRIMERA 20X20 1.5MM", "cantidad": 10, "precio": 6.40 }
+  ]
+}`;
 
     const fallbackReply = () => {
       if (products.length > 0) {
@@ -281,15 +323,29 @@ Recuerda, eres un experto. Usa el nombre del cliente (${profile.nombre || 'clien
     try {
       const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
       const completion = await openai.chat.completions.create({
-        model: 'gpt-4-turbo',
+        model: 'gpt-4-turbo-2024-04-09',
+        response_format: { type: 'json_object' },
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userMessage },
         ],
         temperature: 0.6,
-        max_tokens: 400,
+        max_tokens: 800,
       });
-      const botResponse = completion.choices?.[0]?.message?.content?.trim();
+      const botResponseRaw = completion.choices?.[0]?.message?.content;
+
+      if (!botResponseRaw) {
+        return res.json({ reply: fallbackReply() });
+      }
+
+      const botResponseJson = JSON.parse(botResponseRaw);
+      const botResponse = botResponseJson.reply;
+      const newProforma = botResponseJson.proforma;
+
+      if (Array.isArray(newProforma)) {
+        updateUserProfile(req, { proforma: newProforma });
+      }
+
       return res.json({ reply: botResponse || fallbackReply() });
     } catch (oaErr) {
       console.error('Error al consultar OpenAI:', oaErr?.response?.status || '', oaErr?.message || oaErr);

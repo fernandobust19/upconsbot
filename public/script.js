@@ -8,8 +8,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const messageElement = document.createElement('div');
         messageElement.classList.add('message', `${sender}-message`);
         
-        const p = document.createElement('p');
-        p.textContent = text;
+        // Renderizar Markdown (simplificado para tablas y enlaces)
+        const p = document.createElement('div');
+        p.innerHTML = text
+            .replace(/\|(.+)\|(.+)\|/g, '<table><tr><th>$1</th><th>$2</th></tr>')
+            .replace(/\|(.+)\|/g, '<tr><td>$1</td></tr>')
+            .replace(/<\/tr><table>/g, '</table>')
+            .replace(/(\/proforma)/g, '<a href="$1" target="_blank">$1</a>');
+
         messageElement.appendChild(p);
         
         chatBox.appendChild(messageElement);

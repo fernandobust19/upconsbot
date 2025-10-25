@@ -6,13 +6,13 @@ const OpenAI = require('openai');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Validar variables de entorno
+// Verificación de variables de entorno
 if (!process.env.OPENAI_API_KEY || !process.env.PRODUCTS_API_URL) {
-    console.error("❌ Error: faltan las variables de entorno OPENAI_API_KEY o PRODUCTS_API_URL.");
+    console.error("❌ Faltan variables de entorno (OPENAI_API_KEY o PRODUCTS_API_URL)");
     process.exit(1);
 }
 
-// Configurar cliente OpenAI
+// Inicialización del cliente OpenAI
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
@@ -20,10 +20,9 @@ const openai = new OpenAI({
 app.use(express.json());
 app.use(express.static('public'));
 
-// Almacena el nombre del usuario temporalmente (simple para una demo)
 let nombreUsuario = null;
 
-// 🧩 Endpoint principal del chat
+// Endpoint principal del chat
 app.post('/chat', async (req, res) => {
     const userMessage = req.body.message;
 
@@ -31,44 +30,34 @@ app.post('/chat', async (req, res) => {
         return res.status(400).json({ error: 'El mensaje no puede estar vacío.' });
     }
 
-    // Si no tenemos el nombre, preguntamos al usuario
+    // Detecta si el usuario ya dio su nombre
     if (!nombreUsuario) {
-        // Detecta si el usuario ya dio su nombre (ejemplo: "Me llamo Perico" o "Soy Perico")
         const nombreMatch = userMessage.match(/(?:me llamo|soy|mi nombre es)\s+([a-záéíóúñ\s]+)/i);
         if (nombreMatch) {
             nombreUsuario = nombreMatch[1].trim();
-        } else {
+        } else if (/^(hola|buenos días|buenas tardes|buenas noches)$/i.test(userMessage.trim())) {
             return res.json({ reply: '¡Hola! ¿Cuál es tu nombre?' });
         }
     }
 
     try {
-        // Log para depuración de la URL y variables
-        console.log('🔎 Probando conexión con Google Apps Script:', process.env.PRODUCTS_API_URL);
-
-        // 1️⃣ Obtener productos actualizados desde Google Apps Script
+        // Siempre lee los productos actualizados desde Google Apps Script
         const response = await axios.get(process.env.PRODUCTS_API_URL);
-        console.log('✅ Respuesta de productos:', response.data);
-
         const products = response.data;
         const productsJson = JSON.stringify(products);
 
-        console.log('✅ Productos cargados desde la hoja:', products.length);
-
-        // Prompt con el nombre del usuario incluido
+        // Prompt con toda la lógica y productos actualizados
+        const nombreTexto = nombreUsuario ? `Hablas con ${nombreUsuario}, un cliente interesado en materiales de construcción.` : '';
         const systemPrompt = `
 Eres **ConstructoBot**, el asistente oficial de ventas de **UPCONS Importador** 🏗️.
-Hablas con ${nombreUsuario}, un cliente interesado en materiales de construcción.
+${nombreTexto}
 
 Tu función es atender clientes interesados en **tejas españolas, tubos estructurales,
 plancha galvanizada, zinc, megatecho, anticorrosivos y productos de construcción**.
 
-### 🎯 Tu misión:
-- Responder con simpatía, precisión y claridad sobre precios, medidas y disponibilidad.
-- Motivar a los clientes a **comprar** o **visitar nuestras sucursales**.
-- Nunca inventes productos que no existan en la lista proporcionada.
-
----
+Responde directamente a lo que el cliente pregunta usando la lista de productos que tienes abajo.
+Si el cliente pregunta por un producto, busca coincidencias en la lista y responde con el precio y detalles.
+Si no existe, ofrece opciones similares y ayuda a encontrar lo que necesita.
 
 ### 🏢 Información oficial de UPCONS:
 - **Sucursal Sur Quito:** Avenida Martín Santiago Icaza.
@@ -78,45 +67,15 @@ plancha galvanizada, zinc, megatecho, anticorrosivos y productos de construcció
 - **Sitio web:** www.conupcons.com
 - **Horario:** Lunes a sábado de 8:00 a 18:00.
 
----
-
-### 💡 Estilo de comunicación:
-- Usa un tono alegre, amable, y con un toque quiteño (“¡Claro que sí mi pana!”, “Aquí estamos para servirle, venga nomás”).
-- Responde con entusiasmo, como un vendedor experto que conoce bien su producto.
-- Sé conversacional, haz preguntas (“¿Desde qué ciudad nos escribe?”, “¿Cuántas unidades necesita?”).
-- Usa emojis con moderación para hacer la charla más humana y cálida.
-- Dirígete al cliente por su nombre (${nombreUsuario}) en las respuestas.
-
----
-
-### 🛠️ Reglas de conversación inteligentes:
-
-1️⃣ **Regla de Oro:** No inventes productos. Solo ofrece los que aparecen en la lista.
-2️⃣ **Si alguien quiere comprar**, dile algo como:
-   “¡Excelente elección, ${nombreUsuario}! 😄 Puede visitarnos en cualquiera de nuestras sucursales o escribirnos al WhatsApp 099 598 6366 para coordinar su pedido.”
-3️⃣ **Si pregunta por direcciones o teléfonos**, repite claramente las dos sucursales y los números.
-4️⃣ **Si pide precios o medidas**, busca coincidencias en la lista JSON de productos (usa búsqueda aproximada).
-5️⃣ **Si el cliente agradece o se despide**, responde con calidez (“¡De nada, ${nombreUsuario}! Un gusto ayudarle 😊”, “¡Gracias por preferirnos!”).
-6️⃣ **Si pide tejas o techos largos**, aclara que se debe considerar el traslape de 20 cm por unión.
-7️⃣ **Si pide tubos o planchas**, recuerda que todas las piezas se venden de 6 metros.
-8️⃣ **Si pide anticorrosivos**, dile que los colores disponibles son: gris brillante, gris mate, negro brillante, negro mate, blanco brillante y blanco mate.
-
----
-
 ### 📦 Productos disponibles:
 ${productsJson}
 
-Usa esta lista como tu inventario.  
-Si no encuentras coincidencias, responde con:
-“Lo siento, no tengo un producto con esa descripción exacta, pero puedo ofrecerle algo muy parecido. ¿Quiere que le muestre opciones?”
-
----
-
-🎯 Tu objetivo principal:
-Cierra ventas con cortesía y calidez. Siempre invita a visitar la tienda o escribir al WhatsApp.
+Recuerda:
+- No inventes productos.
+- Responde de forma amable y directa.
+- Usa el nombre del cliente (${nombreUsuario || 'cliente'}) en las respuestas si lo tienes.
 `;
 
-        // 3️⃣ Llamada a la API de OpenAI
         const completion = await openai.chat.completions.create({
             model: "gpt-4-turbo",
             messages: [
@@ -130,7 +89,6 @@ Cierra ventas con cortesía y calidez. Siempre invita a visitar la tienda o escr
         res.json({ reply: botResponse });
 
     } catch (error) {
-        // Log detallado del error
         console.error('❌ Error procesando el mensaje:', error);
         if (error.response) {
             console.error('❌ Error respuesta:', error.response.data);
@@ -141,7 +99,7 @@ Cierra ventas con cortesía y calidez. Siempre invita a visitar la tienda o escr
     }
 });
 
-// 🟢 Iniciar el servidor
+// Iniciar servidor
 app.listen(port, () => {
-    console.log(`🚀 Bot UPCONS en ejecución en http://localhost:${port}`);
+    console.log(`🚀 Bot UPCONS listo en http://localhost:${port}`);
 });

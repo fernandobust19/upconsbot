@@ -91,12 +91,18 @@ function updateUserProfile(req, patch) {
 // ------------------
 // Utilidades de búsqueda
 // ------------------
+const STOP_WORDS = new Set(['de', 'del', 'la', 'el', 'los', 'las', 'un', 'una', 'unos', 'unas', 'con', 'para', 'en', 'y', 'o', 'a']);
+
 const normalize = (s) =>
   String(s || '')
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9\s.#\-]/g, ' ');
+    .replace(/[^a-z0-9\s.#\-]/g, ' ') // quita símbolos no deseados
+    .split(/\s+/)
+    .filter((w) => w && !STOP_WORDS.has(w)) // quita palabras comunes
+    .join(' ');
+
 const tokenize = (s) => normalize(s).split(/\s+/).filter(Boolean);
 const toSingularish = (w) => (w.endsWith('es') ? w.slice(0, -2) : w.endsWith('s') ? w.slice(0, -1) : w);
 function queryTokens(q) {
@@ -201,7 +207,7 @@ app.post('/chat', async (req, res) => {
     if (tokens.length >= 1 && products.length > 0) {
       foundProducts = products.filter((p) => {
         const haystack = productText(p);
-        return tokens.every((t) => haystack.includes(t));
+        return tokens.some((t) => haystack.includes(t));
       });
     }
 

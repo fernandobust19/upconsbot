@@ -18,32 +18,6 @@
             <button id="send-btn">Enviar</button>
         </div>
     </div>
-    <script>
-        async function enviarMensaje() {
-            const mensaje = document.getElementById('user-input').value.trim();
-            if (!mensaje) return;
-            document.getElementById('chat-box').innerHTML += `<div class="message user-message"><p>${mensaje}</p></div>`;
-            document.getElementById('user-input').value = '';
-            document.getElementById('chat-box').scrollTop = document.getElementById('chat-box').scrollHeight;
-            try {
-                const res = await fetch('/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: mensaje })
-                });
-                const data = await res.json();
-                document.getElementById('chat-box').innerHTML += `<div class="message bot-message"><p>${data.reply || data.error}</p></div>`;
-                document.getElementById('chat-box').scrollTop = document.getElementById('chat-box').scrollHeight;
-            } catch (err) {
-                document.getElementById('chat-box').innerHTML += `<div class="message bot-message"><p>Error de conexión con el servidor.</p></div>`;
-                document.getElementById('chat-box').scrollTop = document.getElementById('chat-box').scrollHeight;
-            }
-        }
-
-        document.getElementById('send-btn').addEventListener('click', enviarMensaje);
-        document.getElementById('user-input').addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') enviarMensaje();
-        });
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>

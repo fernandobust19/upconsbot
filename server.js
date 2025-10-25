@@ -1,21 +1,22 @@
-const express = require('express');
-const axios = require('axios');
-const path = require('path');
 require('dotenv').config();
-
+const express = require('express');
+const path = require('path');
+const axios = require('axios');
+const OpenAI = require('openai');
+const openai = new OpenAI(process.env.OPENAI_API_KEY);
+let nombreUsuario;
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Sirve archivos estáticos desde la carpeta 'public'
 app.use(express.static('public'));
 app.use(express.json());
 
-// Endpoint para favicon.ico (evita el error 404)
+// Endpoint para favicon.ico (opcional)
 app.get('/favicon.ico', (req, res) => {
     res.status(204).end();
 });
 
-// Endpoint raíz para verificar funcionamiento
+// Endpoint raíz
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });

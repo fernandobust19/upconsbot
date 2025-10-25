@@ -20,12 +20,26 @@ const openai = new OpenAI({
 app.use(express.json());
 app.use(express.static('public'));
 
+// Almacena el nombre del usuario temporalmente (simple para una demo)
+let nombreUsuario = null;
+
 // 🧩 Endpoint principal del chat
 app.post('/chat', async (req, res) => {
     const userMessage = req.body.message;
 
     if (!userMessage) {
         return res.status(400).json({ error: 'El mensaje no puede estar vacío.' });
+    }
+
+    // Si no tenemos el nombre, preguntamos al usuario
+    if (!nombreUsuario) {
+        // Detecta si el usuario ya dio su nombre (ejemplo: "Me llamo Perico" o "Soy Perico")
+        const nombreMatch = userMessage.match(/(?:me llamo|soy|mi nombre es)\s+([a-záéíóúñ\s]+)/i);
+        if (nombreMatch) {
+            nombreUsuario = nombreMatch[1].trim();
+        } else {
+            return res.json({ reply: '¡Hola! ¿Cuál es tu nombre?' });
+        }
     }
 
     try {
@@ -36,9 +50,11 @@ app.post('/chat', async (req, res) => {
 
         console.log('✅ Productos cargados desde la hoja:', products.length);
 
-        // 2️⃣ Definir el prompt maestro con toda la información de UPCONS
+        // Prompt con el nombre del usuario incluido
         const systemPrompt = `
 Eres **ConstructoBot**, el asistente oficial de ventas de **UPCONS Importador** 🏗️.
+Hablas con ${nombreUsuario}, un cliente interesado en materiales de construcción.
+
 Tu función es atender clientes interesados en **tejas españolas, tubos estructurales,
 plancha galvanizada, zinc, megatecho, anticorrosivos y productos de construcción**.
 
@@ -64,6 +80,7 @@ plancha galvanizada, zinc, megatecho, anticorrosivos y productos de construcció
 - Responde con entusiasmo, como un vendedor experto que conoce bien su producto.
 - Sé conversacional, haz preguntas (“¿Desde qué ciudad nos escribe?”, “¿Cuántas unidades necesita?”).
 - Usa emojis con moderación para hacer la charla más humana y cálida.
+- Dirígete al cliente por su nombre (${nombreUsuario}) en las respuestas.
 
 ---
 
@@ -71,10 +88,10 @@ plancha galvanizada, zinc, megatecho, anticorrosivos y productos de construcció
 
 1️⃣ **Regla de Oro:** No inventes productos. Solo ofrece los que aparecen en la lista.
 2️⃣ **Si alguien quiere comprar**, dile algo como:
-   “¡Excelente elección! 😄 Puede visitarnos en cualquiera de nuestras sucursales o escribirnos al WhatsApp 099 598 6366 para coordinar su pedido.”
+   “¡Excelente elección, ${nombreUsuario}! 😄 Puede visitarnos en cualquiera de nuestras sucursales o escribirnos al WhatsApp 099 598 6366 para coordinar su pedido.”
 3️⃣ **Si pregunta por direcciones o teléfonos**, repite claramente las dos sucursales y los números.
 4️⃣ **Si pide precios o medidas**, busca coincidencias en la lista JSON de productos (usa búsqueda aproximada).
-5️⃣ **Si el cliente agradece o se despide**, responde con calidez (“¡De nada! Un gusto ayudarle 😊”, “¡Gracias por preferirnos!”).
+5️⃣ **Si el cliente agradece o se despide**, responde con calidez (“¡De nada, ${nombreUsuario}! Un gusto ayudarle 😊”, “¡Gracias por preferirnos!”).
 6️⃣ **Si pide tejas o techos largos**, aclara que se debe considerar el traslape de 20 cm por unión.
 7️⃣ **Si pide tubos o planchas**, recuerda que todas las piezas se venden de 6 metros.
 8️⃣ **Si pide anticorrosivos**, dile que los colores disponibles son: gris brillante, gris mate, negro brillante, negro mate, blanco brillante y blanco mate.

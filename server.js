@@ -1,5 +1,6 @@
 const express = require('express');
 const axios = require('axios');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -9,9 +10,14 @@ const port = process.env.PORT || 3000;
 app.use(express.static('public'));
 app.use(express.json());
 
+// Endpoint para favicon.ico (evita el error 404)
+app.get('/favicon.ico', (req, res) => {
+    res.status(204).end();
+});
+
 // Endpoint raíz para verificar funcionamiento
 app.get('/', (req, res) => {
-    res.sendFile(__dirname + '/public/index.html');
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Endpoint para chat con OpenAI y productos

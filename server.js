@@ -1,31 +1,20 @@
-require('dotenv').config();
 const express = require('express');
 const axios = require('axios');
-const OpenAI = require('openai');
+require('dotenv').config();
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Verificación de variables de entorno
-if (!process.env.OPENAI_API_KEY || !process.env.PRODUCTS_API_URL) {
-    console.error("❌ Faltan variables de entorno (OPENAI_API_KEY o PRODUCTS_API_URL)");
-    process.exit(1);
-}
+app.use(express.json());
 
-// Inicialización del cliente OpenAI
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
+// Endpoint raíz para verificar funcionamiento
+app.get('/', (req, res) => {
+    res.send('Servidor UPCONS funcionando correctamente.');
 });
 
-app.use(express.json());
-app.use(express.static('public'));
-
-let nombreUsuario = null;
-
-// Endpoint principal del chat
+// Endpoint para chat con OpenAI y productos
 app.post('/chat', async (req, res) => {
     const userMessage = req.body.message;
-
     if (!userMessage) {
         return res.status(400).json({ error: 'El mensaje no puede estar vacío.' });
     }
@@ -46,7 +35,7 @@ app.post('/chat', async (req, res) => {
     }
 
     try {
-        // Siempre lee los productos actualizados desde Google Apps Script
+        console.log('Consultando productos desde:', process.env.PRODUCTS_API_URL);
         const response = await axios.get(process.env.PRODUCTS_API_URL);
         const products = response.data;
         const productsJson = JSON.stringify(products);
@@ -103,7 +92,36 @@ Recuerda:
     }
 });
 
-// Iniciar servidor
+// Endpoint para consultar productos "bottt" y "Bot de Productos"
+app.get('/producto-bot', async (req, res) => {
+    try {
+        console.log('Consultando productos desde:', process.env.PRODUCTS_API_URL);
+        const response = await axios.get(process.env.PRODUCTS_API_URL);
+        const productos = response.data;
+
+        const bottt = productos.find(p =>
+            (p.nombre || p.producto || '').toLowerCase().includes('bottt')
+        );
+        const botDeProductos = productos.find(p =>
+            (p.nombre || p.producto || '').toLowerCase().includes('bot de productos')
+        );
+
+        console.log('Producto encontrado (bottt):', bottt);
+        console.log('Producto encontrado (Bot de Productos):', botDeProductos);
+
+        if (bottt) {
+            res.json({ producto: bottt, tipo: 'bottt' });
+        } else if (botDeProductos) {
+            res.json({ producto: botDeProductos, tipo: 'Bot de Productos' });
+        } else {
+            res.json({ mensaje: 'Ninguno de los productos está registrado en el sistema.' });
+        }
+    } catch (error) {
+        console.error('Error consultando productos:', error.message);
+        res.status(500).json({ error: 'No se pudo consultar los productos.' });
+    }
+});
+
 app.listen(port, () => {
-    console.log(`🚀 Bot UPCONS listo en http://localhost:${port}`);
+    console.log(`Servidor del bot escuchando en http://localhost:${port}`);
 });

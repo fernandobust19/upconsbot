@@ -43,8 +43,13 @@ app.post('/chat', async (req, res) => {
     }
 
     try {
+        // Log para depuración de la URL y variables
+        console.log('🔎 Probando conexión con Google Apps Script:', process.env.PRODUCTS_API_URL);
+
         // 1️⃣ Obtener productos actualizados desde Google Apps Script
         const response = await axios.get(process.env.PRODUCTS_API_URL);
+        console.log('✅ Respuesta de productos:', response.data);
+
         const products = response.data;
         const productsJson = JSON.stringify(products);
 
@@ -125,8 +130,14 @@ Cierra ventas con cortesía y calidez. Siempre invita a visitar la tienda o escr
         res.json({ reply: botResponse });
 
     } catch (error) {
-        console.error('❌ Error procesando el mensaje:', error.message);
-        res.status(500).json({ error: 'Error al obtener datos o comunicarse con OpenAI.' });
+        // Log detallado del error
+        console.error('❌ Error procesando el mensaje:', error);
+        if (error.response) {
+            console.error('❌ Error respuesta:', error.response.data);
+            res.status(500).json({ error: 'Error en la respuesta del servidor: ' + JSON.stringify(error.response.data) });
+        } else {
+            res.status(500).json({ error: 'Error interno del servidor: ' + error.message });
+        }
     }
 });
 

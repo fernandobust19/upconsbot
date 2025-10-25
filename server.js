@@ -48,6 +48,27 @@ app.post('/chat', async (req, res) => {
         const response = await axios.get(process.env.PRODUCTS_API_URL);
         console.log('✅ Productos recibidos:', response.data);
         const products = response.data;
+
+        // New search logic starts here
+        const searchTerm = userMessage.toLowerCase().trim();
+        if (searchTerm.length >= 3) { // only search if the term is 3 or more characters
+            const foundProducts = products.filter(product =>
+                product.nombre.toLowerCase().includes(searchTerm)
+            );
+
+            if (foundProducts.length > 0) {
+                let reply = `He encontrado ${foundProducts.length} productos que coinciden con tu búsqueda:
+
+`;
+                foundProducts.forEach(product => {
+                    reply += `- ${product.nombre}: ${product.precio}
+`;
+                });
+                return res.json({ reply });
+            }
+        }
+        // New search logic ends here
+
         const productsJson = JSON.stringify(products);
 
         // Prompt con toda la lógica y productos actualizados

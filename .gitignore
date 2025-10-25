@@ -3,3 +3,6 @@ node_modules/
 
 # Archivo de entorno con secretos
 .env
+
+# Ignorar carpetas de caché y de build de Gradle
+.gradle/

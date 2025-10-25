@@ -35,8 +35,13 @@ app.post('/chat', async (req, res) => {
         const nombreMatch = userMessage.match(/(?:me llamo|soy|mi nombre es)\s+([a-záéíóúñ\s]+)/i);
         if (nombreMatch) {
             nombreUsuario = nombreMatch[1].trim();
+            return res.json({ reply: `¡Hola ${nombreUsuario}! ¿En qué puedo ayudarte?` });
         } else if (/^(hola|buenos días|buenas tardes|buenas noches)$/i.test(userMessage.trim())) {
             return res.json({ reply: '¡Hola! ¿Cuál es tu nombre?' });
+        } else {
+            // Asume que la respuesta es el nombre
+            nombreUsuario = userMessage.trim();
+            return res.json({ reply: `¡Hola ${nombreUsuario}! ¿En qué puedo ayudarte?` });
         }
     }
 
@@ -90,8 +95,7 @@ Recuerda:
 
     } catch (error) {
         console.error('❌ Error procesando el mensaje:', error);
-        if (error.response) {
-            console.error('❌ Error respuesta:', error.response.data);
+        if (error.response && error.response.data) {
             res.status(500).json({ error: 'Error en la respuesta del servidor: ' + JSON.stringify(error.response.data) });
         } else {
             res.status(500).json({ error: 'Error interno del servidor: ' + error.message });

@@ -1,0 +1,42 @@
+[
+  {
+    "producto": "PLANCHA GALVANIZADA 1.22 X 2.44 / 0.40 ESPESOR",
+    "precio": 11.5
+  },
+  {
+    "producto": "PLANCHA GALVANIZADA 1.22 X 2.44 / 0.90 ESPESOR",
+    "precio": 25.0
+  },
+  {
+    "producto": "PLANCHA GALVANIZADA 1.22 X 2.44 / 0.70 ESPESOR",
+    "precio": 21.0
+  },
+  {
+    "producto": "PLANCHA GALVANIZADA 1.22 X 2.44 / 0.50 ESPESOR",
+    "precio": 13.0
+  },
+  {
+    "producto": "BARRA primera (1/4)",
+    "precio": 1.75
+  },
+  {
+    "producto": "BARRA Redonda (3/8)",
+    "precio": 4.83
+  },
+  {
+    "producto": "BARRA cuadrada (3/8)",
+    "precio": 5.0
+  },
+  {
+    "producto": "BARRA cuadrada (1/2)",
+    "precio": 7.5
+  },
+  {
+    "producto": "ANGULO primera Neg (20X2MM)",
+    "precio": 5.65
+  },
+  {
+    "producto": "ANGULO primera Neg (20X3MM)",
+    "precio": 6.75
+  }
+]

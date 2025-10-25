@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
-const axios = require('axios');
+const fs = require('fs').promises;
 const OpenAI = require('openai');
 
 let morgan;
@@ -28,21 +28,22 @@ let productsCache = { data: null, fetchedAt: 0 };
 const isCacheFresh = () => productsCache.data && Date.now() - productsCache.fetchedAt < CACHE_TTL_MS;
 
 async function fetchProductsAndCache() {
-  if (!process.env.PRODUCTS_API_URL) {
-    console.warn('PRODUCTS_API_URL no está configurada.');
-    productsCache = { data: [], fetchedAt: Date.now() };
-    return productsCache.data;
-  }
+  const filePath = path.join(__dirname, 'productos_completos.json');
   const started = Date.now();
   try {
-    const response = await axios.get(process.env.PRODUCTS_API_URL, { timeout: 15000 });
-    const data = Array.isArray(response.data) ? response.data : [];
-    productsCache = { data, fetchedAt: Date.now() };
-    console.info(`Productos actualizados: ${data.length} ítems en ${Date.now() - started}ms.`);
-    return data;
+    const fileContent = await fs.readFile(filePath, 'utf-8');
+    const jsonData = JSON.parse(fileContent);
+    const data = Array.isArray(jsonData)
+      ? jsonData.map((p) => ({ nombre: p.producto, precio: p.precio }))
+      : [];
+
+    productsCache = { data: data, fetchedAt: Date.now() };
+    console.info(`Productos cargados desde archivo: ${data.length} ítems en ${Date.now() - started}ms.`);
+    return productsCache.data;
   } catch (err) {
-    console.error('Error al actualizar productos:', err?.response?.status || '', err?.message || err);
-    throw err;
+    console.error(`Error al cargar productos desde ${filePath}:`, err.message);
+    productsCache = { data: [], fetchedAt: Date.now() }; // Cache vacío en caso de error
+    return [];
   }
 }
 

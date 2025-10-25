@@ -37,17 +37,45 @@ document.addEventListener('DOMContentLoaded', () => {
         return tableHtml;
     };
 
+    const renderMarkdownTable = (markdown) => {
+        const lines = markdown.split('\n').filter(line => line.trim().startsWith('|'));
+        if (lines.length < 2) return markdown;
+
+        let tableHtml = '<table>';
+        const headerLine = lines.shift();
+        const headers = headerLine.split('|').map(h => h.trim()).filter(Boolean);
+        tableHtml += `<thead><tr><th>${headers.join('</th><th>')}</th></tr></thead>`;
+
+        if (lines[0] && lines[0].includes('---')) lines.shift();
+
+        tableHtml += '<tbody>';
+        lines.forEach(line => {
+            const cells = line.split('|').map(c => c.trim()).filter(Boolean);
+            if (cells.length > 0) {
+                tableHtml += `<tr><td>${cells.join('</td><td>')}</td></tr>`;
+            }
+        });
+        tableHtml += '</tbody></table>';
+        return markdown.substring(0, markdown.indexOf('|')) + tableHtml;
+    };
+
     const addMessage = (text, sender) => {
         const messageElement = document.createElement('div');
         messageElement.classList.add('message', `${sender}-message`);
         
         const p = document.createElement('div');
 
-        if (sender === 'bot' && text.includes('| Producto ') && text.includes('| Precio ')) {
+        // Determinar el tipo de tabla para renderizar
+        const isProductList = sender === 'bot' && text.includes('| Producto') && text.includes('| Precio');
+        const isProformaTable = sender === 'bot' && text.includes('| Cantidad') && text.includes('| Total');
+
+        if (isProductList) {
             p.innerHTML = renderInteractiveProductTable(text);
+        } else if (isProformaTable) {
+            p.innerHTML = renderMarkdownTable(text);
         } else {
-            // Renderizado normal para otros mensajes y tablas (como proformas)
-            p.innerHTML = text.replace(/(\/proforma)/g, '<a href="$1" target="_blank">$1</a>');
+            // Renderizado normal para texto y enlaces
+            p.innerHTML = text.replace(/(\/proforma)/g, '<a href="$1" target="_blank">Ver Proforma en nueva pestaña</a>');
         }
 
         messageElement.appendChild(p);

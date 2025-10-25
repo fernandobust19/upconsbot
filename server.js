@@ -194,43 +194,36 @@ app.post('/chat', async (req, res) => {
 
   try {
     const products = await getProducts();
+    let foundProducts = [];
 
     // Búsqueda mejorada por tokens en múltiples campos
     const tokens = queryTokens(userMessage);
     if (tokens.length >= 1 && products.length > 0) {
-      const foundProducts = products.filter((p) => {
+      foundProducts = products.filter((p) => {
         const haystack = productText(p);
         return tokens.every((t) => haystack.includes(t));
       });
-      if (foundProducts.length > 0) {
-        const top = foundProducts.slice(0, 12);
-        let reply = `He encontrado ${foundProducts.length} productos que coinciden con tu búsqueda:\n\n`;
-        top.forEach((product) => {
-          reply += `- ${product.nombre}: ${product.precio}\n`;
-        });
-        if (foundProducts.length > top.length) {
-          reply += `\n…y ${foundProducts.length - top.length} más. Puedes ser más específico (medida, calibre, material, marca).`;
-        }
-        return res.json({ reply });
-      }
     }
 
-    const productsJson = JSON.stringify(products);
+    // Usamos los productos encontrados en la búsqueda local o el catálogo completo si no hay coincidencias.
+    const productsForContext = foundProducts.length > 0 ? foundProducts : products;
+    const productsJson = JSON.stringify(productsForContext.slice(0, 50)); // Limitar para no exceder el contexto
+
     const nombreTexto = profile.nombre
       ? `Hablas con ${profile.nombre}, un cliente interesado en materiales de construcción.`
       : '';
     const systemPrompt = `
-Eres ConstructoBot, el asistente oficial de ventas de UPCONS Importador. Responde en español, con tono profesional y cercano.
+Eres ConstructoBot, un asistente técnico experto de UPCONS Importador, con conocimientos de arquitectura e ingeniería. Tu tono es profesional, preciso y orientado a soluciones. Responde siempre en español.
 ${nombreTexto}
 
-Objetivo: ayudar al cliente a encontrar el producto adecuado (tejas españolas, tubos estructurales, plancha galvanizada, zinc, megatecho, anticorrosivos y otros materiales de construcción), usando la lista de productos provista más abajo.
+Objetivo: Asesorar al cliente para que encuentre la mejor solución técnica para su proyecto usando el catálogo de productos provisto. Tu meta es ser un recurso confiable, no solo un vendedor.
 
 Instrucciones de respuesta:
-- Responde directo a la intención del cliente. Si pregunta precios o stock, indica lo disponible según la lista; si no está, ofrece alternativas parecidas.
-- Si faltan datos clave (medida, calibre, espesor, color, cantidad, marca), pide 1–2 preguntas de aclaración, no más.
-- No inventes productos ni precios. Si algo no está en la lista, dilo y sugiere opciones.
-- Sé breve (3–6 líneas) y claro. Usa viñetas cuando enumeres opciones.
-- Si corresponde, incluye contacto: WhatsApp +593 99 598 6366 y horarios (L-S 8:00–18:00).
+- **Manejo de Consultas**: Si el cliente pide un producto con una especificación (medida, color) que no tienes, NO digas simplemente "no tenemos". En su lugar, busca el producto base en el catálogo y responde informando sobre las variantes que SÍ tienes. Ejemplo: "No disponemos de teja española de 6 metros, pero puedo ofrecerte teja española en medidas de 3.60m y 4.20m. ¿Alguna de estas se ajusta a tu proyecto?".
+- **Precisión ante todo**: Basa TODAS tus respuestas sobre productos y precios estrictamente en el catálogo JSON. No inventes productos, medidas, ni precios. Si un producto no está en la lista, indícalo claramente y ofrece la mejor alternativa técnica que sí tengas.
+- **Preguntas Clave**: Si el cliente es ambiguo, haz 1 o 2 preguntas técnicas para aclarar (ej. "¿Para qué tipo de estructura necesita el tubo?" o "¿Busca un acabado brillante o mate para el anticorrosivo?").
+- **Brevedad y Claridad**: Sé conciso (3-6 líneas). Usa viñetas para listar productos o especificaciones, facilitando la lectura.
+- **Información de Contacto**: Ofrece los datos de contacto (WhatsApp, sucursales) solo cuando sea lógico, como para confirmar stock de grandes cantidades, coordinar una visita o si el cliente lo solicita explícitamente.
 
 Contexto de UPCONS:
 - Sucursal Sur Quito: Avenida Martín Santiago Icaza.
@@ -243,7 +236,7 @@ Contexto de UPCONS:
 Catálogo JSON (para grounding, no lo repitas completo):
 ${productsJson}
 
-Recuerda nunca inventar datos y usar el nombre del cliente (${profile.nombre || 'cliente'}) si está disponible.`;
+Recuerda, eres un experto. Usa el nombre del cliente (${profile.nombre || 'cliente'}) para personalizar la conversación.`;
 
     const fallbackReply = () => {
       if (products.length > 0) {
@@ -287,4 +280,3 @@ Recuerda nunca inventar datos y usar el nombre del cliente (${profile.nombre || 
 app.listen(port, () => {
   console.log(`Servidor del bot escuchando en http://localhost:${port}`);
 });
-

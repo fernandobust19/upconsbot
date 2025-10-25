@@ -4,16 +4,15 @@ const axios = require('axios');
 const OpenAI = require('openai');
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
-// Validar que las variables de entorno estén presentes
+// Validar variables de entorno
 if (!process.env.OPENAI_API_KEY || !process.env.PRODUCTS_API_URL) {
-    console.error("Error: Las variables de entorno OPENAI_API_KEY y PRODUCTS_API_URL son obligatorias.");
-    console.log("Por favor, crea un archivo .env y añade tus claves. Mira .env.example para un ejemplo.");
+    console.error("❌ Error: faltan las variables de entorno OPENAI_API_KEY o PRODUCTS_API_URL.");
     process.exit(1);
 }
 
-// Configurar cliente de OpenAI
+// Configurar cliente OpenAI
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
@@ -21,39 +20,7 @@ const openai = new OpenAI({
 app.use(express.json());
 app.use(express.static('public'));
 
-// Consumir el endpoint de Google Apps Script
-async function obtenerProductos() {
-    try {
-        const response = await axios.get(process.env.PRODUCTS_API_URL);
-        console.log('URL usada:', process.env.PRODUCTS_API_URL);
-        console.log('Productos recibidos:', response.data);
-    } catch (error) {
-        console.error('Error al consumir el endpoint:', error);
-    }
-}
-
-// Llama a la función al iniciar el servidor
-obtenerProductos();
-
-// Función para normalizar texto (quita espacios, pasa a minúsculas, elimina puntos y unidades)
-function normalizar(texto) {
-    return texto
-        .toLowerCase()
-        .replace(/\s+/g, ' ')
-        .replace(/[.,]/g, '')
-        .replace(/metros|ms|m\b/g, 'm')
-        .trim();
-}
-
-// Detecta ciudad en la consulta
-function obtenerCiudad(texto) {
-    const textoNorm = texto.toLowerCase();
-    if (textoNorm.includes('quito')) return 'quito';
-    // Puedes agregar más ciudades si lo necesitas
-    return textoNorm.match(/desde ([a-záéíóúñ]+)/)?.[1] || null;
-}
-
-// Endpoint para el chat
+// 🧩 Endpoint principal del chat
 app.post('/chat', async (req, res) => {
     const userMessage = req.body.message;
 
@@ -62,105 +29,91 @@ app.post('/chat', async (req, res) => {
     }
 
     try {
-        // 1. Obtener productos desde tu Google Apps Script
+        // 1️⃣ Obtener productos actualizados desde Google Apps Script
         const response = await axios.get(process.env.PRODUCTS_API_URL);
-        console.log('URL usada:', process.env.PRODUCTS_API_URL);
-        console.log('Respuesta de Google Script:', response.data);
         const products = response.data;
         const productsJson = JSON.stringify(products);
 
-        // **DEBUGGING: Log para ver los productos recibidos**
-        console.log('Productos recibidos:', productsJson);
+        console.log('✅ Productos cargados desde la hoja:', products.length);
 
-        // 2. Crear el prompt para OpenAI con el contexto de los productos
-        const systemPrompt = `Eres 'ConstructoBot', un asistente de ventas para una ferretería. Tu misión es responder usando **exclusivamente** la lista de productos proporcionada.\n\n**REGLAS CRÍTICAS:**\n\n1. **NO INVENTES PRODUCTOS (REGLA DE ORO):** Tu conocimiento se limita **estrictamente** a la lista JSON de abajo. Nunca menciones un producto (como 'martillo') si no existe en esa lista. Inventar productos está prohibido.\n\n2. **SÉ FLEXIBLE AL BUSCAR, PERO ESTRICTO CON LA RESPUESTA:** Un cliente puede escribir el nombre de un producto de forma incompleta o aproximada (ej. 'teja de 6m'). Tu trabajo es buscar en la lista JSON el producto que **más se parezca**.\n   - Si encuentras uno o más productos que coinciden razonablemente (ej. el cliente pide 'teja de 6m' y tú encuentras 'Teja española 6.14 m.'), **considera que es una coincidencia** y presenta esos productos.\n   - Si no encuentras ninguna coincidencia razonable, **entonces y solo entonces**, debes responder: 'Lo siento, no tengo un producto que coincida con esa descripción en mi inventario. ¿Puedo ayudarte con algo más?\'\n\n3. **PREGUNTAR LA CIUDAD:** Antes de cotizar, siempre pregunta primero: '¿Desde qué ciudad nos escribe?\'.\n\n4. **PRECISIÓN DEL PRECIO:** Cuando respondas con un producto de la lista, asegúrate de dar el nombre completo y el precio exacto que aparece en la lista para evitar confusiones.\n\n**Lista de Productos (Inventario Exclusivo):**\n${productsJson}`;
+        // 2️⃣ Definir el prompt maestro con toda la información de UPCONS
+        const systemPrompt = `
+Eres **ConstructoBot**, el asistente oficial de ventas de **UPCONS Importador** 🏗️.
+Tu función es atender clientes interesados en **tejas españolas, tubos estructurales,
+plancha galvanizada, zinc, megatecho, anticorrosivos y productos de construcción**.
 
-        // 3. Llamar a la API de OpenAI
+### 🎯 Tu misión:
+- Responder con simpatía, precisión y claridad sobre precios, medidas y disponibilidad.
+- Motivar a los clientes a **comprar** o **visitar nuestras sucursales**.
+- Nunca inventes productos que no existan en la lista proporcionada.
+
+---
+
+### 🏢 Información oficial de UPCONS:
+- **Sucursal Sur Quito:** Avenida Martín Santiago Icaza.
+- **Sucursal Sucre:** Avenida Mariscal Sucre y Arturo Tipanguano.
+- **Teléfonos:** 099 598 6366 / 0983 801 298.
+- **WhatsApp:** +593 99 598 6366.
+- **Sitio web:** www.conupcons.com
+- **Horario:** Lunes a sábado de 8:00 a 18:00.
+
+---
+
+### 💡 Estilo de comunicación:
+- Usa un tono alegre, amable, y con un toque quiteño (“¡Claro que sí mi pana!”, “Aquí estamos para servirle, venga nomás”).
+- Responde con entusiasmo, como un vendedor experto que conoce bien su producto.
+- Sé conversacional, haz preguntas (“¿Desde qué ciudad nos escribe?”, “¿Cuántas unidades necesita?”).
+- Usa emojis con moderación para hacer la charla más humana y cálida.
+
+---
+
+### 🛠️ Reglas de conversación inteligentes:
+
+1️⃣ **Regla de Oro:** No inventes productos. Solo ofrece los que aparecen en la lista.
+2️⃣ **Si alguien quiere comprar**, dile algo como:
+   “¡Excelente elección! 😄 Puede visitarnos en cualquiera de nuestras sucursales o escribirnos al WhatsApp 099 598 6366 para coordinar su pedido.”
+3️⃣ **Si pregunta por direcciones o teléfonos**, repite claramente las dos sucursales y los números.
+4️⃣ **Si pide precios o medidas**, busca coincidencias en la lista JSON de productos (usa búsqueda aproximada).
+5️⃣ **Si el cliente agradece o se despide**, responde con calidez (“¡De nada! Un gusto ayudarle 😊”, “¡Gracias por preferirnos!”).
+6️⃣ **Si pide tejas o techos largos**, aclara que se debe considerar el traslape de 20 cm por unión.
+7️⃣ **Si pide tubos o planchas**, recuerda que todas las piezas se venden de 6 metros.
+8️⃣ **Si pide anticorrosivos**, dile que los colores disponibles son: gris brillante, gris mate, negro brillante, negro mate, blanco brillante y blanco mate.
+
+---
+
+### 📦 Productos disponibles:
+${productsJson}
+
+Usa esta lista como tu inventario.  
+Si no encuentras coincidencias, responde con:
+“Lo siento, no tengo un producto con esa descripción exacta, pero puedo ofrecerle algo muy parecido. ¿Quiere que le muestre opciones?”
+
+---
+
+🎯 Tu objetivo principal:
+Cierra ventas con cortesía y calidez. Siempre invita a visitar la tienda o escribir al WhatsApp.
+`;
+
+        // 3️⃣ Llamada a la API de OpenAI
         const completion = await openai.chat.completions.create({
-            model: "gpt-3.5-turbo",
+            model: "gpt-4-turbo",
             messages: [
                 { role: "system", content: systemPrompt },
                 { role: "user", content: userMessage }
             ],
+            temperature: 0.9,
         });
 
         const botResponse = completion.choices[0].message.content;
         res.json({ reply: botResponse });
 
     } catch (error) {
-        console.error('Error procesando el mensaje:', error);
-        res.status(500).json({ error: 'Hubo un error al contactar al bot o al obtener los datos de los productos.' });
+        console.error('❌ Error procesando el mensaje:', error.message);
+        res.status(500).json({ error: 'Error al obtener datos o comunicarse con OpenAI.' });
     }
 });
 
-// Endpoint para responder a los clientes con coincidencias flexibles
-app.post('/consulta-producto', async (req, res) => {
-    const consulta = req.body.consulta || '';
-    const ciudad = obtenerCiudad(consulta);
-
-    try {
-        const response = await axios.get(process.env.PRODUCTS_API_URL);
-        const productos = response.data;
-
-        const consultaNorm = normalizar(consulta);
-
-        const coincidencias = productos.filter(p => {
-            const nombreNorm = normalizar(p.nombre || p.producto || '');
-            return nombreNorm.includes(consultaNorm);
-        });
-
-        if (!ciudad) {
-            res.json({ mensaje: '¿Desde qué ciudad nos escribe? Necesitamos saber tu ubicación para darte precios y opciones de envío.' });
-            return;
-        }
-
-        if (ciudad === 'quito') {
-            if (coincidencias.length > 0) {
-                res.json({ resultados: coincidencias, mensaje: 'Estos son los precios para Quito. ¿Te gustaría cotizar o hacer un pedido?' });
-            } else {
-                res.json({ mensaje: 'Lo siento, no tengo un producto que coincida con esa descripción en mi inventario para Quito.' });
-            }
-        } else {
-            res.json({ mensaje: `¡Gracias por tu interés! Actualmente solo enviamos productos a Quito. El envío fuera de Quito puede ser costoso o no disponible. ¿Quieres consultar precios para Quito o necesitas ayuda con otra ciudad?` });
-        }
-    } catch (error) {
-        res.status(500).json({ error: 'No se pudieron obtener los productos.' });
-    }
-});
-
+// 🟢 Iniciar el servidor
 app.listen(port, () => {
-    console.log(`Servidor del bot escuchando en http://localhost:${port}`);
+    console.log(`🚀 Bot UPCONS en ejecución en http://localhost:${port}`);
 });
-
-// Google Apps Script code to be used in the Apps Script editor
-function doGet() {
-  try {
-    // Cambia el ID por el de tu hoja real
-    const hoja = SpreadsheetApp.openById("16L2f32IZ3zOACxJnA512tthrb7xBrhOS2MnNQws0mbZI").getSheetByName("Productos");
-    if (!hoja) {
-      Logger.log("No se encontró la hoja 'Productos'");
-      return ContentService.createTextOutput(JSON.stringify({ error: "No se encontró la hoja 'Productos'" })).setMimeType(ContentService.MimeType.JSON);
-    }
-    const datos = hoja.getDataRange().getValues();
-    Logger.log("Datos leídos de la hoja:", datos);
-
-    // Validación: asegúrate que hay datos y que el formato es correcto
-    if (datos.length < 2) {
-      Logger.log("No hay productos en la hoja");
-      return ContentService.createTextOutput(JSON.stringify([])).setMimeType(ContentService.MimeType.JSON);
-    }
-
-    // Convierte los datos en objetos
-    const productos = datos.slice(1).map(fila => ({
-      nombre: fila[0],
-      precio: fila[1]
-    }));
-
-    Logger.log("Productos procesados:", productos);
-
-    return ContentService.createTextOutput(JSON.stringify(productos)).setMimeType(ContentService.MimeType.JSON);
-  } catch (e) {
-    Logger.log("Error en doGet: " + e);
-    return ContentService.createTextOutput(JSON.stringify({ error: e.toString() })).setMimeType(ContentService.MimeType.JSON);
-  }
-}

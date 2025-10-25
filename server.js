@@ -254,7 +254,7 @@ app.post('/chat', async (req, res) => {
     if (tokens.length >= 1 && products.length > 0) {
       foundProducts = products.filter((p) => {
         const haystack = productText(p);
-        return tokens.every((t) => haystack.includes(t));
+        return tokens.some((t) => haystack.includes(t));
       });
     }
 
@@ -293,7 +293,6 @@ Instrucciones de respuesta:
 - **Formato de Tabla**: Cuando muestres la proforma o una lista de productos, SIEMPRE usa una tabla Markdown.
 - **Ofrecer Enlace a Proforma**: Cuando la proforma tenga productos, finaliza tu respuesta ofreciendo un enlace para verla en una página separada: "Puedes ver tu proforma detallada aquí: /proforma".
 - **Precisión y Búsqueda**: Basa TODAS tus respuestas sobre productos y precios estrictamente en el catálogo JSON. Si no encuentras un producto exacto, ofrece las alternativas más cercanas del catálogo.
-- **Precisión ante todo**: Basa TODAS tus respuestas sobre productos y precios estrictamente en el catálogo JSON. No inventes productos, medidas, ni precios. Si un producto no está en la lista, indícalo claramente y ofrece la mejor alternativa técnica que sí tengas.
 - **Preguntas Clave**: Si el cliente es ambiguo, haz 1 o 2 preguntas técnicas para aclarar (ej. "¿Para qué tipo de estructura necesita el tubo?" o "¿Busca un acabado brillante o mate para el anticorrosivo?").
 - **Información de Contacto**: Ofrece los datos de contacto (WhatsApp, sucursales) solo cuando sea lógico, como para confirmar stock de grandes cantidades, coordinar una visita o si el cliente lo solicita explícitamente.
 

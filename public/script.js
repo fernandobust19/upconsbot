@@ -33,11 +33,12 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (!response.ok) {
-                throw new Error('Error en la respuesta del servidor.');
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Error en la respuesta del servidor.');
             }
 
             const data = await response.json();
-            addMessage(data.reply, 'bot');
+            addMessage(data.reply || 'No se recibió una respuesta válida.', 'bot');
 
         } catch (error) {
             console.error('Error al enviar mensaje:', error);

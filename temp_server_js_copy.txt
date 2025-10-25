@@ -1,0 +1,171 @@
+﻿require('dotenv').config();
+const express = require('express');
+const path = require('path');
+const axios = require('axios');
+const OpenAI = require('openai');
+let nombreUsuario;
+const app = express();
+const port = process.env.PORT || 3000;
+
+app.use(express.static('public'));
+app.use(express.json());
+
+// Endpoint para favicon.ico (opcional)
+app.get('/favicon.ico', (req, res) => {
+    res.status(204).end();
+});
+
+// Endpoint raÃ­z
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+/**
+ * Valida y extrae un nombre de un texto usando IA.
+ * @param {string} textoUsuario El texto enviado por el usuario.
+ * @returns {Promise<string|null>} El nombre extraÃ­do o null si no se encuentra un nombre.
+ */
+async function validarYExtraerNombre(textoUsuario) {
+    try {
+        const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+        const prompt = `
+        Tu tarea es analizar el siguiente texto y determinar si contiene un nombre de persona.
+        Texto: "${textoUsuario}"
+        Si el texto contiene un nombre, extrÃ¡elo y devuÃ©lvelo. Por ejemplo, de "mi nombre es Juan", devuelve "Juan".
+        Si el texto es solo un nombre, como "Ana", devuÃ©lvelo.
+        Si el texto es una pregunta o una frase que claramente no es un nombre (como "cuÃ¡nto cuestan las tejas" o "dÃ³nde estÃ¡n ubicados"), responde con "NULL".
+        Responde Ãºnicamente con el nombre extraÃ­do o con la palabra "NULL".`;
+
+        const completion = await openai.chat.completions.create({
+            model: "gpt-4-turbo",
+            messages: [{ role: "system", content: prompt }],
+            temperature: 0.0,
+        });
+
+        const respuesta = completion.choices[0].message.content.trim();
+        if (respuesta.toUpperCase() === 'NULL' || respuesta.length > 20) { // Evita respuestas largas o incorrectas
+            return null;
+        }
+        return respuesta;
+    } catch (error) {
+        console.error("Error al validar nombre con IA:", error);
+        return null; // En caso de error, asumimos que no es un nombre.
+    }
+}
+
+// Endpoint para chat con OpenAI y productos
+app.post('/chat', async (req, res) => {
+    const userMessage = req.body.message;
+    if (!userMessage) {
+        return res.status(400).json({ error: 'El mensaje no puede estar vacÃ­o.' });
+    }
+
+    
+    // Validar que la API Key de OpenAI estÃ© configurada
+    if (!process.env.OPENAI_API_KEY) {
+        console.error('âŒ OPENAI_API_KEY no estÃ¡ configurada en el archivo .env');
+        return res.status(500).json({ error: 'Error de configuraciÃ³n del servidor: la clave de API de OpenAI no estÃ¡ disponible.' });
+    }
+
+    // --- Nueva LÃ³gica de Captura de Nombre con IA ---
+    if (!nombreUsuario) {
+        if (/^(hola|buenos dÃ­as|buenas tardes|buenas noches)/i.test(userMessage)) {
+            return res.json({ reply: 'Â¡Hola! Soy ConstructoBot. Â¿CuÃ¡l es tu nombre?' });
+        }
+
+        const nombreDetectado = await validarYExtraerNombre(userMessage);
+        if (nombreDetectado) {
+            nombreUsuario = nombreDetectado;
+            return res.json({ reply: `Â¡Hola ${nombreUsuario}! Un gusto. Â¿En quÃ© puedo ayudarte hoy?` });
+        }
+        // Si no se detecta un nombre, la ejecuciÃ³n continÃºa para tratar el mensaje como una consulta normal.
+    }
+    // --- Fin de la Nueva LÃ³gica ---
+
+    try {
+        console.log('ðŸ”Ž Intentando obtener productos desde:', process.env.PRODUCTS_API_URL);
+        const response = await axios.get(process.env.PRODUCTS_API_URL);
+        console.log('âœ… Productos recibidos:', response.data);
+        const products = response.data;
+
+        // New search logic starts here
+        const searchTerm = userMessage.toLowerCase().trim();
+        if (searchTerm.length >= 3) { // only search if the term is 3 or more characters
+            const foundProducts = products.filter(product =>
+                product.nombre.toLowerCase().includes(searchTerm)
+            );
+
+            if (foundProducts.length > 0) {
+                let reply = `He encontrado ${foundProducts.length} productos que coinciden con tu bÃºsqueda:
+
+`;
+                foundProducts.forEach(product => {
+                    reply += `- ${product.nombre}: ${product.precio}
+`;
+                });
+                return res.json({ reply });
+            }
+        }
+        // New search logic ends here
+
+        const productsJson = JSON.stringify(products);
+
+        // Prompt con toda la lÃ³gica y productos actualizados
+        const nombreTexto = nombreUsuario ? `Hablas con ${nombreUsuario}, un cliente interesado en materiales de construcciÃ³n.` : '';
+        const systemPrompt = `
+Eres **ConstructoBot**, el asistente oficial de ventas de **UPCONS Importador** ðŸ—ï¸.
+${nombreTexto}
+
+Tu funciÃ³n es atender clientes interesados en **tejas espaÃ±olas, tubos estructurales,
+plancha galvanizada, zinc, megatecho, anticorrosivos y productos de construcciÃ³n**.
+
+Responde directamente a lo que el cliente pregunta usando la lista de productos que tienes abajo.
+Si el cliente pregunta por un producto, busca coincidencias en la lista y responde con el precio y detalles.
+Si no existe, ofrece opciones similares y ayuda a encontrar lo que necesita.
+
+### ðŸ¢ InformaciÃ³n oficial de UPCONS:
+- **Sucursal Sur Quito:** Avenida MartÃ­n Santiago Icaza.
+- **Sucursal Sucre:** Avenida Mariscal Sucre y Arturo Tipanguano.
+- **TelÃ©fonos:** 099 598 6366 / 0983 801 298.
+- **WhatsApp:** +593 99 598 6366.
+- **Sitio web:** www.conupcons.com
+- **Horario:** Lunes a sÃ¡bado de 8:00 a 18:00.
+
+### ðŸ“¦ Productos disponibles:
+${productsJson}
+
+Recuerda:
+- No inventes productos.
+- Responde de forma amable y directa.
+- Usa el nombre del cliente (${nombreUsuario || 'cliente'}) en las respuestas si lo tienes.
+`;
+
+        const OpenAI = require('openai');
+        const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+        const completion = await openai.chat.completions.create({
+            model: "gpt-4-turbo",
+            messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userMessage }
+            ],
+            temperature: 0.9,
+        });
+
+        const botResponse = completion.choices[0].message.content;
+        res.json({ reply: botResponse });
+
+    } catch (error) {
+        console.error('âŒ Error en /chat:', error);
+        if (error.response) { // Errores de Axios o OpenAI con respuesta
+            console.error('âŒ Detalle del error de la API:', error.response.data);
+            res.status(500).json({ error: 'Hubo un problema con un servicio externo.' });
+        } else {
+            res.status(500).json({ error: 'Error interno del servidor. Revisa los logs para mÃ¡s detalles.' });
+        }
+    }
+});
+
+app.listen(port, () => {
+    console.log(`Servidor del bot escuchando en http://localhost:${port}`);
+});

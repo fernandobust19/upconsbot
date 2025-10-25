@@ -122,7 +122,11 @@ function productText(p) {
     .replace(/\brectang\b/gi, 'rectangular')
     .replace(/\bneg\b/gi, 'negro')
     .replace(/\bgalv\b/gi, 'galvanizado')
-    .replace(/\bmts\b/gi, 'm'); // Normalizar metros
+    .replace(/\bmts\b/gi, 'm') // Normalizar metros
+    // Redondear medidas decimales para que coincidan con búsquedas de enteros (ej: 6.14m -> 6m)
+    .replace(/(\d+)\.\d+\s*m/g, (match, number) => {
+      return `${Math.round(parseFloat(match))}m`;
+    });
   return normalize(expandedText);
 }
 
@@ -244,7 +248,7 @@ app.post('/chat', async (req, res) => {
     if (tokens.length >= 1 && products.length > 0) {
       foundProducts = products.filter((p) => {
         const haystack = productText(p);
-        return tokens.some((t) => haystack.includes(t));
+        return tokens.every((t) => haystack.includes(t));
       });
     }
 

@@ -230,19 +230,23 @@ app.post('/chat', async (req, res) => {
   const conversationHistory = profile.history?.slice(-10) || [];
 
 
-  if (!profile.nombre) {
-    if (/^(hola|buenos dias|buenos días|buenas tardes|buenas noches)/i.test(userMessage)) {
-      return res.json({ reply: '¡Hola! Soy un asesor de ventas con inteligencia artificial. Para darte una atención más personalizada, ¿cuál es tu nombre?' });
-    }
+  // --- Lógica de captura de nombre REESTRUCTURADA ---
+  if (!profile.nombre) { // Solo se ejecuta si no conocemos el nombre del usuario.
     if (hasOpenAI) {
       const nombreDetectado = await validarYExtraerNombre(userMessage);
       if (nombreDetectado) {
+        // Si la IA detecta un nombre, lo guardamos y saludamos.
         const reply = `¡Excelente, ${nombreDetectado}! Un gusto. Puedo ayudarte a crear una proforma. ¿Qué materiales necesitas?`;
         const newHistory = [...conversationHistory, { role: 'user', content: userMessage }, { role: 'assistant', content: reply }];
         updateUserProfile(req, { nombre: nombreDetectado, history: newHistory });
         return res.json({ reply: reply });
       }
     }
+    // Si NO se detectó un nombre, verificamos si es un saludo simple para pedirlo.
+    if (/^(hola|buenos dias|buenos días|buenas tardes|buenas noches)$/i.test(userMessage.trim())) {
+      return res.json({ reply: '¡Hola! Soy un asesor de ventas con inteligencia artificial. Para darte una atención más personalizada, ¿cuál es tu nombre?' });
+    }
+    // Si no es un saludo simple y no hay nombre, la conversación continúa para que la IA maneje la consulta.
   }
 
   try {
@@ -254,7 +258,7 @@ app.post('/chat', async (req, res) => {
     if (tokens.length >= 1 && products.length > 0) {
       foundProducts = products.filter((p) => {
         const haystack = productText(p);
-        return tokens.some((t) => haystack.includes(t));
+        return tokens.every((t) => haystack.includes(t));
       });
     }
 

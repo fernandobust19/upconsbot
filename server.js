@@ -353,12 +353,26 @@ Ejemplo de formato de respuesta:
 
       const botResponseJson = JSON.parse(botResponseRaw);
       const botResponse = botResponseJson.reply;
-      const newProforma = botResponseJson.proforma;
+      let newProforma = botResponseJson.proforma;
 
       const newHistory = [...conversationHistory, { role: 'user', content: userMessage }, { role: 'assistant', content: botResponse }];
 
       if (Array.isArray(newProforma)) {
-        updateUserProfile(req, { proforma: newProforma, history: newHistory });
+        // --- VERIFICACIÓN DE PRECIOS ---
+        // Nunca confiar en el precio que devuelve la IA. Siempre usar el del catálogo oficial.
+        const productList = await getProducts();
+        const productMap = new Map(productList.map(p => [p.nombre, p.precio]));
+
+        const verifiedProforma = newProforma.map(item => {
+          const officialPrice = productMap.get(item.nombre);
+          if (officialPrice !== undefined) {
+            // Si el producto existe, nos aseguramos de que el precio sea el correcto.
+            return { ...item, precio: officialPrice };
+          }
+          return null; // Si la IA alucinó un producto que no existe, lo descartamos.
+        }).filter(Boolean); // Limpiar los nulos
+
+        updateUserProfile(req, { proforma: verifiedProforma, history: newHistory });
       }
 
       return res.json({ reply: botResponse || fallbackReply() });

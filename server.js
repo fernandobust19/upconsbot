@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
+const axios = require('axios');
 const fs = require('fs').promises;
 const OpenAI = require('openai');
 
@@ -73,23 +74,19 @@ async function getProducts() {
 // ------------------
 const userProfiles = new Map(); // key -> { nombre, updatedAt }
 const USER_TTL_MS = Number(process.env.USER_TTL_MS || 30 * 60 * 1000); // 30 minutos
-function getUserKey(req) {
-  return req.ip || 'anon';
-}
-function getUserProfile(req) {
-  const key = getUserKey(req);
+
+function getUserProfile(userKey) {
   const now = Date.now();
-  const existing = userProfiles.get(key);
+  const existing = userProfiles.get(userKey);
   if (existing && now - existing.updatedAt < USER_TTL_MS) return existing;
   const fresh = { nombre: null, proforma: [], history: [], updatedAt: now };
-  userProfiles.set(key, fresh);
+  userProfiles.set(userKey, fresh);
   return fresh;
 }
-function updateUserProfile(req, patch) {
-  const key = getUserKey(req);
-  const current = getUserProfile(req);
+function updateUserProfile(userKey, patch) {
+  const current = getUserProfile(userKey);
   const next = { ...current, ...patch, updatedAt: Date.now() };
-  userProfiles.set(key, next);
+  userProfiles.set(userKey, next);
   return next;
 }
 
@@ -159,7 +156,7 @@ app.post('/admin/refresh-products', async (req, res) => {
 });
 
 app.get('/proforma', (req, res) => {
-  const profile = getUserProfile(req);
+  const profile = getUserProfile(req.ip);
   if (!profile || profile.proforma.length === 0) {
     return res.status(404).send('<h1>No hay productos en la proforma.</h1>');
   }
@@ -214,23 +211,12 @@ async function validarYExtraerNombre(textoUsuario) {
 }
 
 // ------------------
-// Chat principal
+// Lógica de Chat Centralizada
 // ------------------
-app.post('/chat', async (req, res) => {
-  const userMessage = req.body?.message;
-  if (!userMessage || typeof userMessage !== 'string') {
-    return res.status(400).json({ error: 'El mensaje no puede estar vacío.' });
-  }
-
-  const isValidOpenAIKey = (key) => typeof key === 'string' && key.startsWith('sk-') && key.length > 25;
-  const hasOpenAI = isValidOpenAIKey(process.env.OPENAI_API_KEY);
-
-  const profile = getUserProfile(req);
-  // Limitar el historial a los últimos 10 intercambios (user + bot) para no exceder el contexto
+async function processMessage(userKey, userMessage, hasOpenAI) {
+  const profile = getUserProfile(userKey);
   const conversationHistory = profile.history?.slice(-10) || [];
 
-
-  // --- Lógica de captura de nombre REESTRUCTURADA ---
   if (!profile.nombre) { // Solo se ejecuta si no conocemos el nombre del usuario.
     if (hasOpenAI) {
       const nombreDetectado = await validarYExtraerNombre(userMessage);
@@ -238,15 +224,15 @@ app.post('/chat', async (req, res) => {
         // Si la IA detecta un nombre, lo guardamos y saludamos.
         const reply = `¡Excelente, ${nombreDetectado}! Un gusto. Puedo ayudarte a crear una proforma. ¿Qué materiales necesitas?`;
         const newHistory = [...conversationHistory, { role: 'user', content: userMessage }, { role: 'assistant', content: reply }];
-        updateUserProfile(req, { nombre: nombreDetectado, history: newHistory });
-        return res.json({ reply: reply });
+        updateUserProfile(userKey, { nombre: nombreDetectado, history: newHistory });
+        return reply;
       }
     }
     // Si NO se detectó un nombre, verificamos si es un saludo simple para pedirlo.
     if (/^(hola|buenos dias|buenos días|buenas tardes|buenas noches)$/i.test(userMessage.trim())) {
-      return res.json({ reply: '¡Hola! Soy un asesor de ventas con inteligencia artificial. Para darte una atención más personalizada, ¿cuál es tu nombre?' });
+      return '¡Hola! Soy un asesor de ventas con inteligencia artificial. Para darte una atención más personalizada, ¿cuál es tu nombre?';
     }
-    // Si no es un saludo simple y no hay nombre, la conversación continúa para que la IA maneje la consulta.
+    // Si no es un saludo y no hay nombre, la IA manejará la consulta.
   }
 
   try {
@@ -289,10 +275,10 @@ Interpretación de Términos (para tu conocimiento interno):
 
 Instrucciones de respuesta:
 - **Gestión de Proforma**:
-  - Si el cliente pide agregar productos (ej: "5 tubos de 20x20"), actualiza la proforma. Si un producto ya existe, suma la nueva cantidad.
+  - Si el cliente pide agregar productos (ej: "necesito 14 tejas de 6 metros"), busca el producto más cercano en el catálogo, actualiza la proforma y confirma la acción. Si un producto ya existe, suma la nueva cantidad.
   - Si el cliente pide "ver mi proforma" o "cómo va la cuenta", muéstrale la tabla y el total.
   - Si pide "quitar las tejas", elimínalas de la proforma.
-  - Si pide "empezar de nuevo" o "limpiar", vacía la proforma.
+  - Si pide "empezar de nuevo" o "limpiar proforma", vacía la proforma.
 - **Tono y Formato**: Sé siempre amable y halaga al cliente (ej. "¡Excelente elección!"). Usa saltos de línea (\n) para separar párrafos y antes de mostrar una tabla para que la respuesta no se vea amontonada.
 - **Formato de Tabla**: Cuando muestres la proforma o una lista de productos, SIEMPRE usa una tabla Markdown.
 - **Ofrecer Enlace a Proforma**: Cuando la proforma tenga productos, finaliza tu respuesta ofreciendo un enlace para verla en una página separada: "Puedes ver tu proforma detallada aquí: /proforma".
@@ -333,7 +319,7 @@ Ejemplo de formato de respuesta:
 
     if (!hasOpenAI) {
       console.warn('OPENAI_API_KEY ausente o inválida; devolviendo respaldo.');
-      return res.json({ reply: fallbackReply() });
+      return fallbackReply();
     }
 
     try {
@@ -352,7 +338,7 @@ Ejemplo de formato de respuesta:
       const botResponseRaw = completion.choices?.[0]?.message?.content;
 
       if (!botResponseRaw) {
-        return res.json({ reply: fallbackReply() });
+        return fallbackReply();
       }
 
       const botResponseJson = JSON.parse(botResponseRaw);
@@ -376,18 +362,101 @@ Ejemplo de formato de respuesta:
           return null; // Si la IA alucinó un producto que no existe, lo descartamos.
         }).filter(Boolean); // Limpiar los nulos
 
-        updateUserProfile(req, { proforma: verifiedProforma, history: newHistory });
+        updateUserProfile(userKey, { proforma: verifiedProforma, history: newHistory });
       }
 
-      return res.json({ reply: botResponse || fallbackReply() });
+      return botResponse || fallbackReply();
     } catch (oaErr) {
       console.error('Error al consultar OpenAI:', oaErr?.response?.status || '', oaErr?.message || oaErr);
-      return res.json({ reply: fallbackReply() });
+      return fallbackReply();
     }
   } catch (error) {
     console.error('Error no controlado en /chat:', error);
-    return res.status(500).json({ error: 'Error interno del servidor. Revisa los logs para más detalles.' });
+    return 'Lo siento, ocurrió un error inesperado al procesar tu solicitud.';
   }
+}
+
+// ------------------
+// Endpoint para Chat Web
+// ------------------
+app.post('/chat', async (req, res) => {
+  const userMessage = req.body?.message;
+  if (!userMessage || typeof userMessage !== 'string') {
+    return res.status(400).json({ error: 'El mensaje no puede estar vacío.' });
+  }
+
+  const isValidOpenAIKey = (key) => typeof key === 'string' && key.startsWith('sk-') && key.length > 25;
+  const hasOpenAI = isValidOpenAIKey(process.env.OPENAI_API_KEY);
+  const userKey = req.ip;
+
+  try {
+    const reply = await processMessage(userKey, userMessage, hasOpenAI);
+    res.json({ reply });
+  } catch (error) {
+    console.error('Error en endpoint /chat:', error);
+    res.status(500).json({ error: 'Error interno del servidor.' });
+  }
+});
+
+// ------------------
+// Endpoints para Facebook Messenger
+// ------------------
+
+// Verifica el webhook
+app.get('/webhook', (req, res) => {
+  const VERIFY_TOKEN = process.env.MESSENGER_VERIFY_TOKEN;
+
+  const mode = req.query['hub.mode'];
+  const token = req.query['hub.verify_token'];
+  const challenge = req.query['hub.challenge'];
+
+  if (mode && token) {
+    if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+      console.log('✅ WEBHOOK_VERIFIED');
+      res.status(200).send(challenge);
+    } else {
+      res.sendStatus(403);
+    }
+  }
+});
+
+// Recibe mensajes de Messenger
+app.post('/webhook', async (req, res) => {
+  const body = req.body;
+
+  if (body.object === 'page') {
+    for (const entry of body.entry) {
+      const webhookEvent = entry.messaging[0];
+      const senderPsid = webhookEvent.sender.id; // Page-Scoped ID
+
+      if (webhookEvent.message && webhookEvent.message.text) {
+        const userMessage = webhookEvent.message.text;
+        const isValidOpenAIKey = (key) => typeof key === 'string' && key.startsWith('sk-') && key.length > 25;
+        const hasOpenAI = isValidOpenAIKey(process.env.OPENAI_API_KEY);
+
+        const reply = await processMessage(senderPsid, userMessage, hasOpenAI);
+        await sendMessengerReply(senderPsid, reply);
+      }
+    }
+    res.status(200).send('EVENT_RECEIVED');
+  } else {
+    res.sendStatus(404);
+  }
+});
+
+// Envía la respuesta a Messenger
+async function sendMessengerReply(psid, text) {
+  const PAGE_ACCESS_TOKEN = process.env.MESSENGER_PAGE_ACCESS_TOKEN;
+  const requestBody = {
+    recipient: { id: psid },
+    message: { text: text },
+  };
+
+  await axios.post('https://graph.facebook.com/v19.0/me/messages', requestBody, {
+    params: { access_token: PAGE_ACCESS_TOKEN },
+  }).catch(error => {
+    console.error('Error al enviar mensaje a Messenger:', error.response?.data || error.message);
+  });
 });
 
 app.listen(port, () => {

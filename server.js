@@ -98,6 +98,30 @@ function updateUserProfile(req, patch) {
 // ------------------
 const STOP_WORDS = new Set(['de', 'del', 'la', 'el', 'los', 'las', 'un', 'una', 'unos', 'unas', 'con', 'para', 'en', 'y', 'o', 'a']);
 
+// Correcciones comunes de escritura y sinónimos básicos para mejorar búsqueda
+const COMMON_CORRECTIONS = new Map([
+  // Errores frecuentes
+  ['autopoerforante', 'autoperforante'],
+  ['autopoerforantes', 'autoperforante'],
+  ['autoperforantes', 'autoperforante'], // normalizar a singular
+  ['capuchón', 'capuchon'],
+  ['española', 'espanola'],
+]);
+
+const SYNONYM_MAP = new Map([
+  // tornillo(s) → autoperforante, perno (como categoría relacionada)
+  ['tornillo', ['autoperforante', 'perno']],
+  ['tornillos', ['autoperforante', 'perno']],
+  // perno(s)
+  ['perno', ['perno', 'autoperforante']],
+  ['pernos', ['perno', 'autoperforante']],
+  // teja española
+  ['teja', ['teja']],
+  ['espanola', ['espanola']],
+  // capuchón
+  ['capuchon', ['capuchon']]
+]);
+
 const normalize = (s) =>
   String(s || '')
     .toLowerCase()
@@ -128,6 +152,21 @@ function productText(p) {
       return `${Math.round(parseFloat(match))}m`;
     });
   return normalize(expandedText);
+}
+
+function expandQueryTokens(rawQuery) {
+  // 1) tokenizar y singularizar
+  const base = queryTokens(rawQuery);
+  const out = new Set();
+  for (let tok of base) {
+    // 2) correcciones comunes
+    if (COMMON_CORRECTIONS.has(tok)) tok = COMMON_CORRECTIONS.get(tok);
+    out.add(tok);
+    // 3) sinónimos
+    const syns = SYNONYM_MAP.get(tok);
+    if (syns && syns.length) syns.forEach((s) => out.add(toSingularish(s)));
+  }
+  return Array.from(out);
 }
 
 // ------------------
@@ -253,13 +292,22 @@ app.post('/chat', async (req, res) => {
     const products = await getProducts();
     let foundProducts = [];
 
-    // Búsqueda mejorada por tokens en múltiples campos
-    const tokens = queryTokens(userMessage);
+    // Búsqueda mejorada con correcciones, sinónimos y scoring parcial
+    const tokens = expandQueryTokens(userMessage);
     if (tokens.length >= 1 && products.length > 0) {
-      foundProducts = products.filter((p) => {
+      const scored = products.map((p) => {
         const haystack = productText(p);
-        return tokens.every((t) => haystack.includes(t));
+        let score = 0;
+        for (const t of tokens) {
+          if (haystack.includes(t)) score += 1;
+        }
+        return { p, score };
       });
+      // Mantener solo coincidencias relevantes (score >= 1) y ordenar por score desc
+      foundProducts = scored
+        .filter((x) => x.score >= 1)
+        .sort((a, b) => b.score - a.score)
+        .map((x) => x.p);
     }
 
     // Usamos los productos encontrados en la búsqueda local o el catálogo completo si no hay coincidencias.
@@ -310,8 +358,9 @@ Ejemplo de formato de respuesta:
 }`;
 
     const fallbackReply = () => {
-      if (products.length > 0) {
-        const sugerencias = products
+      const base = productsForContext.length > 0 ? productsForContext : products;
+      if (base.length > 0) {
+        const sugerencias = base
           .slice(0, 10)
           .map((p) => `- ${p.nombre}: ${p.precio}`)
           .join('\n');

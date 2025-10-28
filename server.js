@@ -182,6 +182,42 @@ function expandQueryTokens(rawQuery) {
 }
 
 // ------------------
+// Utilidades de proforma y NLU local
+// ------------------
+function formatProformaMarkdown(items) {
+  let total = 0;
+  const rows = (items || []).map((it) => {
+    const sub = (it.cantidad || 0) * (it.precio || 0);
+    total += sub;
+    return `| ${it.nombre} | ${it.cantidad} | $${Number(it.precio || 0).toFixed(2)} | $${sub.toFixed(2)} |`;
+  });
+  const header = `| Nombre | Cantidad | Precio unitario | Subtotal |\n| --- | ---: | ---: | ---: |`;
+  return { table: `${header}\n${rows.join('\n')}`, total };
+}
+
+function findBestProductByMessage(message, products) {
+  const tokens = expandQueryTokens(message);
+  if (!tokens.length || !products?.length) return null;
+  let best = null;
+  let bestScore = 0;
+  for (const p of products) {
+    const hay = productText(p);
+    let s = 0;
+    for (const t of tokens) if (hay.includes(t)) s++;
+    if (s > bestScore) {
+      best = p;
+      bestScore = s;
+    }
+  }
+  return bestScore > 0 ? best : null;
+}
+
+function parseFirstInt(msg) {
+  const m = String(msg).match(/(\d{1,6})/);
+  return m ? parseInt(m[1], 10) : null;
+}
+
+// ------------------
 // Rutas básicas
 // ------------------
 app.get('/favicon.ico', (req, res) => res.status(204).end());
@@ -415,6 +451,70 @@ Ejemplo de formato de respuesta:
       }
       return `No puedo acceder a la IA ni a la lista de productos por ahora. ¿Podrías decirme más detalles (producto, medida, cantidad, color)?\n\nLlámanos: ${COMPANY_TEL_LINK}`;
     };
+
+    // --- Intentos locales para no depender de IA ---
+    const msg = userMessage.toLowerCase();
+    const wantsView = /(\bver (mi )?proforma\b|\bc(?:o|ó)mo va la cuenta\b|\bmi proforma\b)/i.test(userMessage);
+    const addIntent = /(agrega|a\u00F1ade|a\u00F1adir|sumar|pon|quiero|comprar|deme|dame|necesito)/i.test(userMessage);
+    const removeIntent = /(quita|elimina|remueve|borra)/i.test(userMessage);
+    const updateIntent = /(ajusta|cambia|actualiza|solo|deja)/i.test(userMessage);
+    const quantity = parseFirstInt(userMessage);
+
+    const ensureOfficialPrice = (name) => {
+      const map = new Map(products.map((p) => [p.nombre, p.precio]));
+      return map.get(name);
+    };
+
+    const renderAndReturn = (leadText) => {
+      const { table, total } = formatProformaMarkdown(getUserProfile(req).proforma);
+      const tailLinks = `\n\nPuedes ver tu proforma detallada aquí: /proforma\nDescarga tu proforma aquí: /proforma?download=1\nPuedes llamarnos aquí: ${COMPANY_TEL_LINK}`;
+      return res.json({ reply: `${leadText}\n\n${table}\n\nTotal: $${total.toFixed(2)}${tailLinks}` });
+    };
+
+    if (wantsView) {
+      if (!profile.proforma?.length) {
+        return res.json({ reply: 'Aún no has agregado productos. ¿Qué deseas cotizar?' });
+      }
+      return renderAndReturn('Aquí tienes tu proforma actual:');
+    }
+
+    // Operaciones de agregar
+    if (addIntent && quantity) {
+      const best = findBestProductByMessage(userMessage, products);
+      if (best) {
+        const price = ensureOfficialPrice(best.nombre) ?? best.precio ?? 0;
+        const current = getUserProfile(req).proforma || [];
+        const idx = current.findIndex((it) => it.nombre === best.nombre);
+        if (idx >= 0) current[idx].cantidad = Number(current[idx].cantidad || 0) + quantity;
+        else current.push({ nombre: best.nombre, cantidad: quantity, precio: price });
+        updateUserProfile(req, { proforma: current, history: [...conversationHistory, { role: 'user', content: userMessage }] });
+        return renderAndReturn(`¡Excelente elección! He añadido ${quantity} de ${best.nombre} a tu proforma.`);
+      }
+    }
+
+    // Operaciones de quitar
+    if (removeIntent) {
+      const best = findBestProductByMessage(userMessage, products) || (profile.proforma || [])[((profile.proforma || []).length - 1)]?.nombre;
+      let removedName = null;
+      if (best) {
+        const name = typeof best === 'string' ? best : best.nombre;
+        const current = (getUserProfile(req).proforma || []).filter((it) => it.nombre !== name);
+        if (current.length !== (profile.proforma || []).length) removedName = name;
+        updateUserProfile(req, { proforma: current, history: [...conversationHistory, { role: 'user', content: userMessage }] });
+      }
+      return renderAndReturn(removedName ? `He quitado ${removedName} de tu proforma.` : 'No encontré el producto a quitar. Dime el nombre o medida.');
+    }
+
+    // Operaciones de actualizar cantidad
+    if (updateIntent && quantity) {
+      const best = findBestProductByMessage(userMessage, products) || (profile.proforma || [])[((profile.proforma || []).length - 1)]?.nombre;
+      if (best) {
+        const name = typeof best === 'string' ? best : best.nombre;
+        const current = (getUserProfile(req).proforma || []).map((it) => (it.nombre === name ? { ...it, cantidad: quantity } : it));
+        updateUserProfile(req, { proforma: current, history: [...conversationHistory, { role: 'user', content: userMessage }] });
+        return renderAndReturn(`He ajustado ${name} a ${quantity} unidades.`);
+      }
+    }
 
     if (!hasOpenAI) {
       console.warn('OPENAI_API_KEY ausente o inválida; devolviendo respaldo.');

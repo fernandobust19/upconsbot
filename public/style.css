@@ -48,6 +48,21 @@ body {
     align-self: flex-start;
 }
 
+/* Tablas compactas dentro de mensajes del bot */
+.bot-message table {
+    font-size: 12px;
+    width: 100%;
+    border-collapse: collapse;
+}
+.bot-message th,
+.bot-message td {
+    border: 1px solid #ddd;
+    padding: 4px 6px;
+}
+.bot-message tfoot td {
+    font-weight: bold;
+}
+
 #input-container {
     display: flex;
     padding: 10px;

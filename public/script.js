@@ -67,7 +67,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Determinar el tipo de tabla para renderizar
         const isProductList = sender === 'bot' && text.includes('| Producto') && text.includes('| Precio');
-        const isProformaTable = sender === 'bot' && text.includes('| Cantidad') && text.includes('| Total');
+        const isProformaTable = sender === 'bot' && (
+            (text.includes('| Cantidad') && text.includes('| Total')) ||
+            (text.includes('| Nombre') && text.includes('| Cantidad') && (text.includes('Precio unitario') || text.includes('| Subtotal')))
+        );
 
         if (isProductList) {
             p.innerHTML = renderInteractiveProductTable(text);

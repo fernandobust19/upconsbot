@@ -84,11 +84,38 @@ document.addEventListener('DOMContentLoaded', () => {
         chatBox.scrollTop = chatBox.scrollHeight;
     };
 
+    // Versión mejorada que agrega link de descarga y tel: además de /proforma
+    const addMessageEnhanced = (text, sender) => {
+        const messageElement = document.createElement('div');
+        messageElement.classList.add('message', `${sender}-message`);
+
+        const p = document.createElement('div');
+
+        const isProductList = sender === 'bot' && text.includes('| Producto') && text.includes('| Precio');
+        const isProformaTable = sender === 'bot' && text.includes('| Cantidad') && text.includes('| Total');
+
+        if (isProductList) {
+            p.innerHTML = renderInteractiveProductTable(text);
+        } else if (isProformaTable) {
+            p.innerHTML = renderMarkdownTable(text);
+        } else {
+            let html = text;
+            html = html.replace(/(\/proforma\?download=1)/g, '<a href="$1" download>Descargar Proforma</a>');
+            html = html.replace(/(\b\/proforma\b)(?!\?download=1)/g, '<a href="$1" target="_blank">Ver Proforma en nueva pestaña</a>');
+            html = html.replace(/(tel:[+\d][+\d\-\s()]*)/g, '<a href="$1">Llamar ahora</a>');
+            p.innerHTML = html;
+        }
+
+        messageElement.appendChild(p);
+        chatBox.appendChild(messageElement);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    };
+
     const handleSendMessage = async () => {
         const message = userInput.value.trim(); // Keep this for user-typed messages
         if (message === '') return;
 
-        addMessage(message, 'user');
+        addMessageEnhanced(message, 'user');
         userInput.value = '';
 
         try {
@@ -110,7 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) {
             console.error('Error al enviar mensaje:', error);
-            addMessage('Lo siento, no puedo responder en este momento.', 'bot');
+            addMessageEnhanced('Lo siento, no puedo responder en este momento.', 'bot');
         }
     };
 
@@ -137,3 +164,5 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+
+

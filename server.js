@@ -20,6 +20,18 @@ app.use(express.json());
 if (morgan) app.use(morgan('combined'));
 
 // ------------------
+// Config empresa
+// ------------------
+const COMPANY = {
+  name: process.env.COMPANY_NAME || 'UPCONS Importador',
+  address: process.env.COMPANY_ADDRESS || 'Av. Principal 123, Ciudad, País',
+  phone: process.env.COMPANY_PHONE || '+593999999999',
+  website: process.env.COMPANY_WEBSITE || 'https://upcons.example.com',
+  branches: (process.env.COMPANY_BRANCHES || 'Matriz - Ciudad|Sucursal Norte - Ciudad|Sucursal Sur - Ciudad').split('|'),
+};
+const COMPANY_TEL_LINK = 'tel:' + String(COMPANY.phone).replace(/[^+\d]/g, '');
+
+// ------------------
 // Cache de productos
 // ------------------
 const CACHE_TTL_MS = Number(process.env.PRODUCTS_CACHE_TTL_MS || 10 * 60 * 1000); // 10 minutos
@@ -217,7 +229,37 @@ app.get('/proforma', (req, res) => {
     })
     .join('');
 
-  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Proforma UPCONS</title><style>body{font-family:sans-serif;padding:2em}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:8px;text-align:left}th{background-color:#f2f2f2}tfoot{font-weight:bold}</style></head><body><h1>Proforma - UPCONS Importador</h1><p>Cliente: ${profile.nombre || 'N/A'}</p><table><thead><tr><th>Cantidad</th><th>Producto</th><th>P. Unitario</th><th>Subtotal</th></tr></thead><tbody>${itemsHtml}</tbody><tfoot><tr><td colspan="3">Total</td><td>$${total.toFixed(2)}</td></tr></tfoot></table></body></html>`;
+  if (String(req.query.download || '') === '1') {
+    res.setHeader('Content-Disposition', 'attachment; filename="Proforma-UPCONS.html"');
+  }
+
+  const styles = `body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:2em;color:#222}header{margin-bottom:1em}h1{margin:0 0 .25em}small, .muted{color:#666}table{width:100%;border-collapse:collapse;margin-top:1em}th,td{border:1px solid #ddd;padding:8px;text-align:left}th{background-color:#f7f7f7}tfoot{font-weight:bold}footer{margin-top:2em;font-size:.95em;border-top:1px solid #eee;padding-top:1em}ul{margin:.25em 0 .5em 1.25em}`;
+  const branchesHtml = COMPANY.branches.map((b) => `<li>${b}</li>`).join('');
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Proforma ${COMPANY.name}</title><meta name="viewport" content="width=device-width, initial-scale=1"/><style>${styles}</style></head><body>
+  <header>
+    <h1>Proforma - ${COMPANY.name}</h1>
+    <div class="muted">Cliente: ${profile.nombre || 'N/A'}</div>
+    <div class="muted">Fecha: ${new Date().toLocaleString()}</div>
+    <div style="margin-top:.5em">
+      <strong>Dirección:</strong> ${COMPANY.address} · 
+      <strong>Teléfono:</strong> <a href="${COMPANY_TEL_LINK}">${COMPANY.phone}</a> · 
+      <strong>Web:</strong> <a href="${COMPANY.website}" target="_blank">${COMPANY.website}</a>
+    </div>
+  </header>
+
+  <table><thead><tr><th>Cantidad</th><th>Producto</th><th>P. Unitario</th><th>Subtotal</th></tr></thead><tbody>${itemsHtml}</tbody><tfoot><tr><td colspan="3">Total</td><td>$${total.toFixed(2)}</td></tr></tfoot></table>
+
+  <div style="margin-top:1em">
+    <a href="/proforma?download=1">Descargar esta proforma</a> · 
+    <a href="${COMPANY_TEL_LINK}">Llamar ahora</a>
+  </div>
+
+  <footer>
+    <div><strong>Sucursales:</strong></div>
+    <ul>${branchesHtml}</ul>
+    <div class="muted">Gracias por su confianza.</div>
+  </footer>
+  </body></html>`;
   res.send(html);
 });
 
@@ -320,6 +362,7 @@ app.post('/chat', async (req, res) => {
     
     const proformaActualJson = JSON.stringify(profile.proforma);
 
+    const telLink = `${COMPANY_TEL_LINK}`;
     const systemPrompt = `
 Eres un asesor de ventas con inteligencia artificial de UPCONS Importador, con conocimientos de arquitectura e ingeniería. Tu tono es profesional, preciso y muy amable. Responde siempre en español.
 ${nombreTexto}
@@ -342,8 +385,12 @@ Instrucciones de respuesta:
   - Si pide "quitar las tejas", elimínalas de la proforma.
   - Si pide "empezar de nuevo" o "limpiar", vacía la proforma.
 - **Tono y Formato**: Sé siempre amable y halaga al cliente (ej. "¡Excelente elección!"). Usa saltos de línea (\n) para separar párrafos y antes de mostrar una tabla para que la respuesta no se vea amontonada.
-- **Formato de Tabla**: Cuando muestres la proforma o una lista de productos, SIEMPRE usa una tabla Markdown.
-- **Ofrecer Enlace a Proforma**: Cuando la proforma tenga productos, finaliza tu respuesta ofreciendo un enlace para verla en una página separada: "Puedes ver tu proforma detallada aquí: /proforma".
+ - **Formato de Tabla**: Cuando muestres la proforma o una lista de productos, SIEMPRE usa una tabla Markdown.
+ - **Ofrecer Enlace a Proforma**: Cuando la proforma tenga productos, finaliza tu respuesta ofreciendo:
+   - Un enlace para verla en una página separada: "Puedes ver tu proforma detallada aquí: /proforma".
+   - Un enlace de descarga: "Descarga tu proforma aquí: /proforma?download=1".
+   - Un enlace de llamada directa para negociar la compra: "Puedes llamarnos aquí: ${telLink}".
+ - **Cierre de Conversación**: Si el cliente indica que ya terminó, cierra con un resumen final, incluye ambos enlaces (ver y descargar proforma) y el enlace de llamada directa.
 
 Catálogo JSON (para grounding, no lo repitas completo):
 ${productsJson}
@@ -364,9 +411,9 @@ Ejemplo de formato de respuesta:
           .slice(0, 10)
           .map((p) => `- ${p.nombre}: ${p.precio}`)
           .join('\n');
-        return `Por ahora no puedo generar una respuesta avanzada, pero estas opciones están disponibles:\n\n${sugerencias}\n\n¿Te interesa alguno? Puedes indicarme medida, calibre o cantidad.`;
+        return `Por ahora no puedo generar una respuesta avanzada, pero estas opciones están disponibles:\n\n${sugerencias}\n\n¿Te interesa alguno? Puedes indicarme medida, calibre o cantidad.\n\nPuedes ver tu proforma aquí: /proforma\nDescarga tu proforma aquí: /proforma?download=1\nLlámanos: ${COMPANY_TEL_LINK}`;
       }
-      return 'No puedo acceder a la IA ni a la lista de productos por ahora. ¿Podrías decirme más detalles (producto, medida, cantidad, color)?';
+      return `No puedo acceder a la IA ni a la lista de productos por ahora. ¿Podrías decirme más detalles (producto, medida, cantidad, color)?\n\nLlámanos: ${COMPANY_TEL_LINK}`;
     };
 
     if (!hasOpenAI) {

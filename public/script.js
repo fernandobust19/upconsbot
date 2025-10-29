@@ -160,8 +160,12 @@ document.addEventListener('DOMContentLoaded', () => {
     userInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             handleSendMessage();
-        }
-    });
+    // Mensaje inicial del asistente
+    try {
+        const initial = 'Bienvenido a UP-CONS, tu aliado en construcción.';
+        addMessageEnhanced(initial, 'bot');
+    } catch {}
+});
 
 
 });

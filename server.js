@@ -24,7 +24,7 @@ if (morgan) app.use(morgan('combined'));
 // Config empresa
 // ------------------
 const COMPANY = {
-  name: process.env.COMPANY_NAME || 'UPCONS Importador',
+  name: process.env.COMPANY_NAME || 'UP-CONS',
   address: process.env.COMPANY_ADDRESS || 'Av. Principal 123, Ciudad, País',
   phone: process.env.COMPANY_PHONE || '+593999999999',
   website: process.env.COMPANY_WEBSITE || 'https://upcons.example.com',
@@ -652,7 +652,7 @@ app.post('/chat', async (req, res) => {
 
     const telLink = `${COMPANY_TEL_LINK}`;
     const systemPrompt = `
-Eres un asesor de ventas con inteligencia artificial de UPCONS Importador, con conocimientos de arquitectura e ingeniería. Tu tono es profesional, preciso y muy amable. Responde siempre en español.
+Eres un asesor de ventas con inteligencia artificial de UP-CONS, con conocimientos de arquitectura e ingeniería. Tu tono es profesional, preciso y muy amable. Responde siempre en español.
 ${nombreTexto}
 
 Tu objetivo principal es ser un GESTOR DE PROFORMAS. Ayuda al cliente a construir una cotización. El cliente puede agregar productos, ver la proforma, o quitar ítems.

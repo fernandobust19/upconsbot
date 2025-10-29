@@ -86,7 +86,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             // Normal rendering for text and links
             let html = text;
-            html = html.replace(/(\/proforma\?download=1)/g, '<a href="$1" download>Descargar Proforma</a>');
+            html = html.replace(/(\/proforma\?download=1)/g, '<a href="$1" download>Descargar Proforma (HTML)</a>');
+            html = html.replace(/(\/proforma\.pdf)/g, '<a href="$1" download>Descargar Proforma (PDF)</a>');
             html = html.replace(/(\/proforma\b)(?!\?download=1)/g, '<a href="$1" target="_blank">Ver Proforma en nueva pestaña</a>');
             html = html.replace(/(tel:[+\d][+\d\-\s()]*)/g, '<a href="$1">Llamar ahora</a>');
             p.innerHTML = html.replace(/\n/g, '<br>');
@@ -113,7 +114,8 @@ document.addEventListener('DOMContentLoaded', () => {
             p.innerHTML = renderMarkdownTable(text);
         } else {
             let html = text;
-            html = html.replace(/(\/proforma\?download=1)/g, '<a href="$1" download>Descargar Proforma</a>');
+            html = html.replace(/(\/proforma\?download=1)/g, '<a href="$1" download>Descargar Proforma (HTML)</a>');
+            html = html.replace(/(\/proforma\.pdf)/g, '<a href="$1" download>Descargar Proforma (PDF)</a>');
             html = html.replace(/(\/proforma\b)(?!\?download=1)/g, '<a href="$1" target="_blank">Ver Proforma en nueva pestaña</a>');
             html = html.replace(/(tel:[+\d][+\d\-\s()]*)/g, '<a href="$1">Llamar ahora</a>');
             p.innerHTML = html.replace(/\n/g, '<br>');
@@ -160,4 +162,10 @@ document.addEventListener('DOMContentLoaded', () => {
             handleSendMessage();
         }
     });
+
+    // Mensaje inicial del asistente
+    try {
+        const initial = '¡Hola! Soy tu asesor de ventas UP-CONS. ¿En qué puedo ayudarte hoy?';
+        addMessageEnhanced(initial, 'bot');
+    } catch {}
 });

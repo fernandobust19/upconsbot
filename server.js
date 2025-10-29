@@ -69,10 +69,11 @@ function getProductImageURL(name) {
         if (raw && /^\/images\/[^.]+$/i.test(raw)) {
           // Resolver extensión automáticamente por stem
           const stem = raw.replace(/^\/images\//i, '');
-          const found = IMAGES_INDEX.find((it) => it.norm === normalize(stem));
-          if (found) return `/images/${found.file}`;
+          const stemNorm = normalize(stem);
+          const found = IMAGES_INDEX.find((it) => it.norm === stemNorm || it.norm.includes(stemNorm) || stemNorm.includes(it.norm));
+          if (found) return encodeURI(`/images/${found.file}`);
         }
-        return raw;
+        return raw ? encodeURI(raw) : null;
       }
     }
   }
@@ -90,7 +91,7 @@ function getProductImageURL(name) {
         bestScore = s;
       }
     }
-    if (best && bestScore >= 2) return `/images/${best.file}`;
+    if (best && bestScore >= 2) return encodeURI(`/images/${best.file}`);
   } catch {}
   return null;
 }
@@ -437,7 +438,8 @@ app.get('/proforma', (req, res) => {
   <table><thead><tr><th>Cantidad</th><th>Producto</th><th>P. Unitario</th><th>Subtotal</th></tr></thead><tbody>${itemsHtml}</tbody><tfoot><tr><td colspan="3">Total</td><td>$${total.toFixed(2)}</td></tr></tfoot></table>
 
   <div style="margin-top:1em">
-    <a href="/proforma?download=1">Descargar esta proforma</a> · 
+    <a href="/proforma?download=1">Descargar HTML</a> · 
+    <a href="/proforma.pdf">Descargar PDF</a> · 
     <a href="${COMPANY_TEL_LINK}">Llamar ahora</a>
   </div>
 
@@ -448,6 +450,93 @@ app.get('/proforma', (req, res) => {
   </footer>
   </body></html>`;
   res.send(html);
+});
+
+// ------------------
+// Proforma PDF
+// ------------------
+app.get('/proforma.pdf', (req, res) => {
+  const profile = getUserProfile(req);
+  if (!profile || profile.proforma.length === 0) {
+    return res.status(404).send('No hay productos en la proforma.');
+  }
+  let PDFDocument;
+  try {
+    PDFDocument = require('pdfkit');
+  } catch {
+    // Fallback si no está instalada la dependencia
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return res
+      .status(501)
+      .send('<h1>Generador PDF no disponible</h1><p>Instala la dependencia en el servidor: <code>npm install pdfkit</code>. Mientras tanto, puedes descargar la versión HTML desde <a href="/proforma?download=1">/proforma?download=1</a>.</p>');
+  }
+
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', 'attachment; filename="Proforma-UPCONS.pdf"');
+
+  const doc = new PDFDocument({ size: 'A4', margin: 40 });
+  doc.pipe(res);
+
+  // Encabezado empresa
+  doc.fontSize(18).text(`Proforma - ${COMPANY.name}`);
+  doc.moveDown(0.3);
+  doc.fontSize(10).fillColor('#555').text(`Cliente: ${profile.nombre || 'N/A'}`);
+  doc.text(`Fecha: ${new Date().toLocaleString()}`);
+  doc.text(`Dirección: ${COMPANY.address}`);
+  doc.text(`Teléfono: ${COMPANY.phone}`);
+  doc.text(`Web: ${COMPANY.website}`);
+  doc.moveDown(0.8);
+  doc.fillColor('#000');
+
+  // Tabla
+  const tableTop = doc.y;
+  const col = {
+    qty: 40,
+    name: 260,
+    price: 80,
+    sub: 80,
+  };
+  const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+  const x = doc.page.margins.left;
+  const y = tableTop;
+
+  function drawHeader() {
+    doc.fontSize(11).text('Cantidad', x, doc.y, { width: col.qty });
+    doc.text('Producto', x + col.qty + 8, doc.y, { width: col.name });
+    doc.text('P. Unitario', x + col.qty + 8 + col.name + 8, doc.y, { width: col.price, align: 'right' });
+    doc.text('Subtotal', x + col.qty + 8 + col.name + 8 + col.price + 8, doc.y, { width: col.sub, align: 'right' });
+    doc.moveDown(0.5);
+    doc.moveTo(x, doc.y).lineTo(x + pageWidth, doc.y).strokeColor('#ddd').stroke().strokeColor('#000');
+  }
+  function drawRow(item) {
+    const startY = doc.y + 4;
+    const subtotal = (item.cantidad || 0) * (item.precio || 0);
+    doc.fontSize(10);
+    doc.text(String(item.cantidad || 0), x, startY, { width: col.qty });
+    doc.text(String(item.nombre || ''), x + col.qty + 8, startY, { width: col.name });
+    doc.text(`$${Number(item.precio || 0).toFixed(2)}`, x + col.qty + 8 + col.name + 8, startY, { width: col.price, align: 'right' });
+    doc.text(`$${subtotal.toFixed(2)}`, x + col.qty + 8 + col.name + 8 + col.price + 8, startY, { width: col.sub, align: 'right' });
+    doc.moveDown(1.2);
+  }
+
+  drawHeader();
+  let total = 0;
+  for (const it of profile.proforma) {
+    drawRow(it);
+    total += (it.cantidad || 0) * (it.precio || 0);
+  }
+
+  doc.moveTo(x, doc.y).lineTo(x + pageWidth, doc.y).strokeColor('#ddd').stroke().strokeColor('#000');
+  doc.moveDown(0.4);
+  doc.fontSize(12).text(`Total: $${total.toFixed(2)}`, x + col.qty + 8 + col.name + 8 + col.price + 8, doc.y, { width: col.sub, align: 'right' });
+
+  // Sucursales
+  doc.moveDown(1);
+  doc.fontSize(10).fillColor('#555').text('Sucursales:');
+  COMPANY.branches.forEach((b) => doc.text(`• ${b}`));
+  doc.fillColor('#000');
+
+  doc.end();
 });
 
 // ------------------
@@ -575,7 +664,7 @@ Instrucciones de respuesta:
  - **Formato de Tabla**: Cuando muestres la proforma o una lista de productos, SIEMPRE usa una tabla Markdown.
  - **Ofrecer Enlace a Proforma**: Cuando la proforma tenga productos, finaliza tu respuesta ofreciendo:
    - Un enlace para verla en una página separada: "Puedes ver tu proforma detallada aquí: /proforma".
-   - Un enlace de descarga: "Descarga tu proforma aquí: /proforma?download=1".
+   - Un enlace de descarga en PDF: "Descarga tu proforma aquí: /proforma.pdf".
    - Un enlace de llamada directa para negociar la compra: "Puedes llamarnos aquí: ${telLink}".
  - **Cierre de Conversación**: Si el cliente indica que ya terminó, cierra con un resumen final, incluye ambos enlaces (ver y descargar proforma) y el enlace de llamada directa.
 
@@ -602,7 +691,7 @@ Ejemplo de formato de respuesta:
             return `${tag}${p.nombre}: $${p.precio}`;
           })
           .join('\n');
-        return `Por ahora no puedo generar una respuesta avanzada, pero estas opciones están disponibles:\n\n${lines}\n\n¿Te interesa alguno? Puedes indicarme medida, calibre o cantidad.\n\nPuedes ver tu proforma aquí: /proforma\nDescarga tu proforma aquí: /proforma?download=1\nLlámanos: ${COMPANY_TEL_LINK}`;
+        return `Por ahora no puedo generar una respuesta avanzada, pero estas opciones están disponibles:\n\n${lines}\n\n¿Te interesa alguno? Puedes indicarme medida, calibre o cantidad.\n\nPuedes ver tu proforma aquí: /proforma\nDescarga tu proforma aquí: /proforma.pdf\nLlámanos: ${COMPANY_TEL_LINK}`;
       }
       return `No puedo acceder a la IA ni a la lista de productos por ahora. ¿Podrías decirme más detalles (producto, medida, cantidad, color)?\n\nLlámanos: ${COMPANY_TEL_LINK}`;
     };

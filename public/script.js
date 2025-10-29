@@ -165,7 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Mensaje inicial del asistente
     try {
-        const initial = 'Bienvenido a UP-CONS, tu aliado en construcción.';
+        const initial = 'Bienvenido a UP-CONS, tu aliado en construcción. ¿Cómo puedo ayudarte?';
         addMessageEnhanced(initial, 'bot');
     } catch {}
 

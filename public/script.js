@@ -1,4 +1,3 @@
-
 document.addEventListener('DOMContentLoaded', () => {
     const chatBox = document.getElementById('chat-box');
     const userInput = document.getElementById('user-input');
@@ -32,13 +31,22 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const renderMarkdownTable = (markdown) => {
-        const lines = markdown.split('\n').filter(line => line.trim().startsWith('|'));
+        const tableRegex = /(?:^|\n)(\|.*?\|\s*\n\| *--- *\|.*(?:\n\|.*?\|.*)*)/;
+        const match = markdown.match(tableRegex);
+
+        if (!match) {
+            return markdown;
+        }
+
+        const tableMarkdown = match[1].trim();
+        const lines = tableMarkdown.split('\n').filter(line => line.trim().startsWith('|'));
+        
         if (lines.length < 2) return markdown;
 
-        let tableHtml = '<table>';
+        let tableHtml = '<table style="width: 100%; border-collapse: collapse;">';
         const headerLine = lines.shift();
         const headers = headerLine.split('|').map(h => h.trim()).filter(Boolean);
-        tableHtml += `<thead><tr><th>${headers.join('</th><th>')}</th></tr></thead>`;
+        tableHtml += `<thead><tr><th style="border: 1px solid #ddd; padding: 8px; text-align: left;">${headers.join('</th><th style="border: 1px solid #ddd; padding: 8px; text-align: left;">')}</th></tr></thead>`;
 
         if (lines[0] && lines[0].includes('---')) lines.shift();
 
@@ -46,10 +54,15 @@ document.addEventListener('DOMContentLoaded', () => {
         lines.forEach(line => {
             const cells = line.split('|').map(c => c.trim()).filter(Boolean);
             if (cells.length > 0) {
-                tableHtml += `<tr><td>${cells.join('</td><td>')}</td></tr>`;
+                tableHtml += `<tr><td style="border: 1px solid #ddd; padding: 8px;">${cells.join('</td><td style="border: 1px solid #ddd; padding: 8px;">')}</td></tr>`;
             }
         });
         tableHtml += '</tbody></table>';
+        
+        // Replace the markdown table with the generated HTML table
+        // This part needs careful adjustment based on how the markdown is embedded in the original text
+        // For now, we'll assume the markdown table is at the beginning of the text or can be replaced directly
+        // A more robust solution might involve finding the exact markdown table string within the original markdown
         return markdown.substring(0, markdown.indexOf('|')) + tableHtml;
     };
 
@@ -59,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const p = document.createElement('div');
 
-        // Determinar el tipo de tabla para renderizar
+        // Determine the type of table to render
         const isProductList = sender === 'bot' && text.includes('| Producto') && text.includes('| Precio');
         const isProformaTable = sender === 'bot' && (
             (text.includes('| Cantidad') && text.includes('| Total')) ||
@@ -71,17 +84,20 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (isProformaTable) {
             p.innerHTML = renderMarkdownTable(text);
         } else {
-            // Renderizado normal para texto y enlaces
-            p.innerHTML = text.replace(/(\/proforma)/g, '<a href="$1" target="_blank">Ver Proforma en nueva pestaña</a>');
+            // Normal rendering for text and links
+            let html = text;
+            html = html.replace(/(\/proforma\?download=1)/g, '<a href="$1" download>Descargar Proforma</a>');
+            html = html.replace(/(\/proforma\b)(?!\?download=1)/g, '<a href="$1" target="_blank">Ver Proforma en nueva pestaña</a>');
+            html = html.replace(/(tel:[+\d][+\d\-\s()]*)/g, '<a href="$1">Llamar ahora</a>');
+            p.innerHTML = html.replace(/\n/g, '<br>');
         }
 
         messageElement.appendChild(p);
-        
         chatBox.appendChild(messageElement);
         chatBox.scrollTop = chatBox.scrollHeight;
     };
 
-    // Versión mejorada que agrega link de descarga y tel: además de /proforma
+    // Improved version that adds download and tel: links in addition to /proforma
     const addMessageEnhanced = (text, sender) => {
         const messageElement = document.createElement('div');
         messageElement.classList.add('message', `${sender}-message`);
@@ -98,9 +114,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             let html = text;
             html = html.replace(/(\/proforma\?download=1)/g, '<a href="$1" download>Descargar Proforma</a>');
-            html = html.replace(/(\b\/proforma\b)(?!\?download=1)/g, '<a href="$1" target="_blank">Ver Proforma en nueva pestaña</a>');
+            html = html.replace(/(\/proforma\b)(?!\?download=1)/g, '<a href="$1" target="_blank">Ver Proforma en nueva pestaña</a>');
             html = html.replace(/(tel:[+\d][+\d\-\s()]*)/g, '<a href="$1">Llamar ahora</a>');
-            p.innerHTML = html;
+            p.innerHTML = html.replace(/\n/g, '<br>');
         }
 
         messageElement.appendChild(p);
@@ -145,5 +161,3 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
-
-

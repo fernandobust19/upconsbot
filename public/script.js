@@ -163,9 +163,5 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Mensaje inicial del asistente
-    try {
-        const initial = '¡Hola! Soy tu asesor de ventas UP-CONS. ¿En qué puedo ayudarte hoy?';
-        addMessageEnhanced(initial, 'bot');
-    } catch {}
+
 });

@@ -1,3 +1,6 @@
 [
-  
+  {
+    "match": ["teja española", "teja espanola"],
+    "image": "/images/tejaespañola.jpg"
+  }
 ]

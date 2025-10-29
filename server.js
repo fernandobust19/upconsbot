@@ -725,8 +725,16 @@ Ejemplo de formato de respuesta:
       }
 
       const botResponseJson = JSON.parse(botResponseRaw);
-      const botResponse = botResponseJson.reply;
+      let botResponse = botResponseJson.reply;
       let newProforma = botResponseJson.proforma;
+
+      const userMessageNormalized = normalize(userMessage);
+      if (userMessageNormalized.includes('teja') && userMessageNormalized.includes('espanola')) {
+        const imageUrl = getProductImageURL(userMessage);
+        if (imageUrl) {
+          botResponse += `\n\nPuedes ver una imagen de referencia:<br><img src="${imageUrl}" alt="Imagen de Teja Española" style="width: 100%; max-width: 200px; height: auto; border-radius: 8px; margin-top: 8px;">`;
+        }
+      }
 
       const newHistory = [...conversationHistory, { role: 'user', content: userMessage }, { role: 'assistant', content: botResponse }];
 

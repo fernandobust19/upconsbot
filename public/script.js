@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const headers = headerLine.split('|').map(h => h.trim()).filter(Boolean);
 
-        let tableHtml = `<table><thead><tr><th>${headers.join('</th><th>')}</th><th>Cantidad</th><th></th></tr></thead><tbody>`;
+        let tableHtml = `<table><thead><tr><th>${headers.join('</th><th>')}</th></tr></thead><tbody>`;
 
         lines.forEach((line, index) => {
             const parts = line.split('|').map(s => s.trim()).filter(Boolean);
@@ -22,12 +22,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     <tr>
                         <td>${productName}</td>
                         <td>${productPrice}</td>
-                        <td>
-                            <input type="number" class="quantity-input" id="qty-input-${index}" min="1" value="1" style="width: 60px;">
-                        </td>
-                        <td>
-                            <button class="add-to-proforma-btn" data-product-name="${productName}" data-input-id="qty-input-${index}">Añadir</button>
-                        </td>
                     </tr>
                 `;
             }
@@ -143,22 +137,6 @@ document.addEventListener('DOMContentLoaded', () => {
             addMessageEnhanced('Lo siento, no puedo responder en este momento.', 'bot');
         }
     };
-
-    // Event delegation for dynamically added buttons
-    chatBox.addEventListener('click', (e) => {
-        if (e.target && e.target.classList.contains('add-to-proforma-btn')) {
-            const productName = e.target.getAttribute('data-product-name');
-            const inputId = e.target.getAttribute('data-input-id');
-            const quantityInput = document.getElementById(inputId);
-            const quantity = quantityInput.value;
-
-            if (productName && quantity) {
-                const message = `Añadir ${quantity} de ${productName}`;
-                userInput.value = message;
-                handleSendMessage();
-            }
-        }
-    });
 
     sendBtn.addEventListener('click', handleSendMessage);
     userInput.addEventListener('keypress', (e) => {

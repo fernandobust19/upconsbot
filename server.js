@@ -739,84 +739,84 @@ Ejemplo de formato de respuesta:
     }
 
     // Operaciones de agregar
-    if (addIntent && quantity) {
-      const { dims, thicknessMm } = order;
-      const requestedType = detectTubeTypeFromMessage(userMessage);
-      const inferredType = inferTubeTypeFromDims(dims);
-      const finalType = requestedType || inferredType;
+    // if (addIntent && quantity) {
+    //   const { dims, thicknessMm } = order;
+    //   const requestedType = detectTubeTypeFromMessage(userMessage);
+    //   const inferredType = inferTubeTypeFromDims(dims);
+    //   const finalType = requestedType || inferredType;
 
-      // Si se trata de tubos y hay ambigüedad en el tipo, preguntar
-      const mentionsTube = /\btubo\b/i.test(userMessage) || requestedType || inferredType;
-      if (mentionsTube && !finalType) {
-        return res.json({ reply: '¿Qué tipo de tubo necesitas: cuadrado, rectangular o redondo?' });
-      }
+    //   // Si se trata de tubos y hay ambigüedad en el tipo, preguntar
+    //   const mentionsTube = /\btubo\b/i.test(userMessage) || requestedType || inferredType;
+    //   if (mentionsTube && !finalType) {
+    //     return res.json({ reply: '¿Qué tipo de tubo necesitas: cuadrado, rectangular o redondo?' });
+    //   }
 
-      // Si hay contradicción entre dimensiones y tipo pedido, confirmar
-      if (requestedType && inferredType && requestedType !== inferredType) {
-        return res.json({ reply: `Mencionas la medida ${dims[0]}x${dims[1]}, que suele ser ${inferredType}. ¿Confirmas que lo quieres ${requestedType} o mejor ${inferredType}?` });
-      }
+    //   // Si hay contradicción entre dimensiones y tipo pedido, confirmar
+    //   if (requestedType && inferredType && requestedType !== inferredType) {
+    //     return res.json({ reply: `Mencionas la medida ${dims[0]}x${dims[1]}, que suele ser ${inferredType}. ¿Confirmas que lo quieres ${requestedType} o mejor ${inferredType}?` });
+    //   }
 
-      // Intentar candidatos de tubo si aplica
-      let best = null;
-      if (mentionsTube && finalType) {
-        let candidates = filterTubeCandidates(products, dims, finalType);
+    //   // Intentar candidatos de tubo si aplica
+    //   let best = null;
+    //   if (mentionsTube && finalType) {
+    //     let candidates = filterTubeCandidates(products, dims, finalType);
 
-        if (candidates.length === 0 && dims) {
-          // Si no hay coincidencia exacta, intentar invertir dims (por si catálogo usa otro orden) p.ej 50x100 vs 100x50
-          const invCandidates = filterTubeCandidates(products, [dims[1], dims[0]], finalType);
-          if (invCandidates.length > 0) candidates = invCandidates;
-        }
+    //     if (candidates.length === 0 && dims) {
+    //       // Si no hay coincidencia exacta, intentar invertir dims (por si catálogo usa otro orden) p.ej 50x100 vs 100x50
+    //       const invCandidates = filterTubeCandidates(products, [dims[1], dims[0]], finalType);
+    //       if (invCandidates.length > 0) candidates = invCandidates;
+    //     }
 
-        if (candidates.length > 0) {
-          // Selección por espesor
-          if (thicknessMm) {
-            const tStr = `${thicknessMm}mm`;
-            const byThick = candidates.filter((c) => productText(c).includes(tStr));
-            if (byThick.length > 0) candidates = byThick;
-          } else {
-            // Si faltó espesor y hay múltiples opciones, preguntar opciones
-            const options = Array.from(new Set(candidates.map((c) => extractThicknessFromName(c.nombre)).filter(Boolean)));
-            if (options.length > 1) {
-              return res.json({ reply: `¿Qué espesor prefieres para ${dims ? dims.join('x') : 'el tubo'} ${finalType}? Opciones: ${options.join(', ')}.` });
-            }
-          }
+    //     if (candidates.length > 0) {
+    //       // Selección por espesor
+    //       if (thicknessMm) {
+    //         const tStr = `${thicknessMm}mm`;
+    //         const byThick = candidates.filter((c) => productText(c).includes(tStr));
+    //         if (byThick.length > 0) candidates = byThick;
+    //       } else {
+    //         // Si faltó espesor y hay múltiples opciones, preguntar opciones
+    //         const options = Array.from(new Set(candidates.map((c) => extractThicknessFromName(c.nombre)).filter(Boolean)));
+    //         if (options.length > 1) {
+    //           return res.json({ reply: `¿Qué espesor prefieres para ${dims ? dims.join('x') : 'el tubo'} ${finalType}? Opciones: ${options.join(', ')}.` });
+    //         }
+    //       }
 
-          // Preferir calidad solicitada o 'primera'
-          const qPref = qualityPreferenceFromMessage(userMessage) || 'primera';
-          const byQuality = candidates.filter((c) => new RegExp(`\\b${qPref}\\b`, 'i').test(c.nombre));
-          if (byQuality.length > 0) candidates = byQuality;
+    //       // Preferir calidad solicitada o 'primera'
+    //       const qPref = qualityPreferenceFromMessage(userMessage) || 'primera';
+    //       const byQuality = candidates.filter((c) => new RegExp(`\\b${qPref}\\b`, 'i').test(c.nombre));
+    //       if (byQuality.length > 0) candidates = byQuality;
 
-          // Si quedan múltiples, usar mayor score por tokens generales
-          best = candidates.reduce((acc, cur) => {
-            const score = expandQueryTokens(userMessage).reduce((s, t) => s + (productText(cur).includes(t) ? 1 : 0), 0);
-            return !acc || score > acc.score ? { item: cur, score } : acc;
-          }, null)?.item;
-        }
-      }
+    //       // Si quedan múltiples, usar mayor score por tokens generales
+    //       best = candidates.reduce((acc, cur) => {
+    //         const score = expandQueryTokens(userMessage).reduce((s, t) => s + (productText(cur).includes(t) ? 1 : 0), 0);
+    //         return !acc || score > acc.score ? { item: cur, score } : acc;
+    //       }, null)?.item;
+    //     }
+    //   }
 
-      // Fallback a búsqueda general si no hubo candidato de tubos
-      if (!best) best = findBestProductByMessage(userMessage, products);
+    //   // Fallback a búsqueda general si no hubo candidato de tubos
+    //   if (!best) best = findBestProductByMessage(userMessage, products);
 
-      if (best) {
-        const price = ensureOfficialPrice(best.nombre) ?? best.precio ?? 0;
-        const current = getUserProfile(req).proforma || [];
-        const idx = current.findIndex((it) => it.nombre === best.nombre);
-        if (idx >= 0) current[idx].cantidad = Number(current[idx].cantidad || 0) + quantity;
-        else current.push({ nombre: best.nombre, cantidad: quantity, precio: price });
-        updateUserProfile(req, { proforma: current, history: [...conversationHistory, { role: 'user', content: userMessage }] });
+    //   if (best) {
+    //     const price = ensureOfficialPrice(best.nombre) ?? best.precio ?? 0;
+    //     const current = getUserProfile(req).proforma || [];
+    //     const idx = current.findIndex((it) => it.nombre === best.nombre);
+    //     if (idx >= 0) current[idx].cantidad = Number(current[idx].cantidad || 0) + quantity;
+    //     else current.push({ nombre: best.nombre, cantidad: quantity, precio: price });
+    //     updateUserProfile(req, { proforma: current, history: [...conversationHistory, { role: 'user', content: userMessage }] });
 
-        // Si es teja española, ofrecer ver la imagen antes/después de agregar
-        let extraPreview = '';
-        if (/\bteja\b/i.test(best.nombre)) {
-          const imgUrl = getProductImageURL(best.nombre) || getProductImageURL('teja espanola');
-          if (imgUrl) {
-            extraPreview = `\n\nVista: <a href="${imgUrl}" target="_blank">Ver imagen</a>`;
-          }
-        }
+    //     // Si es teja española, ofrecer ver la imagen antes/después de agregar
+    //     let extraPreview = '';
+    //     if (/\bteja\b/i.test(best.nombre)) {
+    //       const imgUrl = getProductImageURL(best.nombre) || getProductImageURL('teja espanola');
+    //       if (imgUrl) {
+    //         extraPreview = `\n\nVista: <a href="${imgUrl}" target="_blank">Ver imagen</a>`;
+    //       }
+    //     }
 
-        return renderAndReturn(`¡Excelente elección! He añadido ${quantity} de ${best.nombre} a tu proforma.${extraPreview}`);
-      }
-    }
+    //     return renderAndReturn(`¡Excelente elección! He añadido ${quantity} de ${best.nombre} a tu proforma.${extraPreview}`);
+    //   }
+    // }
 
     // Operaciones de quitar (con cantidad específica)
     if (removeIntent) {

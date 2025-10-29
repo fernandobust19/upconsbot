@@ -1,24 +1,14 @@
 [
-    {
-        "match":  [
-                      "teja espanola",
-                      "teja espanola"
-                  ],
-        "image":  "/images/teja-espanola"
-    },
-    {
-        "match":  [
-                      "correa",
-                      "correas",
-                      "corre"
-                  ],
-        "image":  "/images/corres"
-    },
-    {
-        "match":  [
-                      "tubo",
-                      "tubos"
-                  ],
-        "image":  "/images/tubos"
-    }
+  {
+    "match": ["correa", "correas"],
+    "image": "/images/correas.jpg"
+  },
+  {
+    "match": ["teja", "tejas", "española", "espanola"],
+    "image": "/images/tejaespañola.jpg"
+  },
+  {
+    "match": ["tubo", "tubos"],
+    "image": "/images/tubos.jpg"
+  }
 ]

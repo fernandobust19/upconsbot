@@ -32,6 +32,31 @@ const COMPANY = {
 const COMPANY_TEL_LINK = 'tel:' + String(COMPANY.phone).replace(/[^+\d]/g, '');
 
 // ------------------
+// Imagenes de productos (map.json: [{ match: string|[string], image: url }])
+// ------------------
+let IMAGE_MAP = [];
+try {
+  IMAGE_MAP = require(path.join(__dirname, 'public', 'images', 'map.json'));
+  if (!Array.isArray(IMAGE_MAP)) IMAGE_MAP = [];
+} catch {
+  IMAGE_MAP = [];
+}
+function getProductImageURL(name) {
+  if (!name) return null;
+  const n = normalize(name);
+  for (const entry of IMAGE_MAP) {
+    if (!entry) continue;
+    const patterns = Array.isArray(entry.match) ? entry.match : [entry.match];
+    for (const pat of patterns) {
+      if (!pat) continue;
+      const np = normalize(pat);
+      if (np && n.includes(np)) return entry.image || null;
+    }
+  }
+  return null;
+}
+
+// ------------------
 // Cache de productos
 // ------------------
 const CACHE_TTL_MS = Number(process.env.PRODUCTS_CACHE_TTL_MS || 10 * 60 * 1000); // 10 minutos
@@ -189,21 +214,77 @@ function formatProformaMarkdown(items) {
   const rows = (items || []).map((it) => {
     const sub = (it.cantidad || 0) * (it.precio || 0);
     total += sub;
-    return `| ${it.nombre} | ${it.cantidad} | $${Number(it.precio || 0).toFixed(2)} | $${sub.toFixed(2)} |`;
+    const img = getProductImageURL(it.nombre);
+    const nameCell = img
+      ? `<img src="${img}" alt="" style="height:24px;width:auto;vertical-align:middle;margin-right:6px;"> ${it.nombre}`
+      : it.nombre;
+    return `| ${nameCell} | ${it.cantidad} | $${Number(it.precio || 0).toFixed(2)} | $${sub.toFixed(2)} |`;
   });
   const header = `| Nombre | Cantidad | Precio unitario | Subtotal |\n| --- | ---: | ---: | ---: |`;
   return { table: `${header}\n${rows.join('\n')}`, total };
 }
 
+function extractQuantityFromMessage(textRaw) {
+  const text = String(textRaw).toLowerCase();
+  // 1) número seguido de pista de cantidad
+  const qtyHints = /\b(unidades|unds?|u\b|pzas?|piezas|pallets?|cajas?)\b/i;
+  const m1 = Array.from(text.matchAll(/\b(\d{1,6})\s*(unidades|unds?|u\b|pzas?|piezas|pallets?|cajas?)\b/gi));
+  if (m1.length) return parseInt(m1[m1.length - 1][1], 10);
+  // 2) verbo de acción + número no seguido de mm/m/x
+  const verb = /\b(agrega|añade|añadir|pon|poner|quiero|necesito|comprar|deme|dame|sumar)\b/i;
+  const m2 = Array.from(text.matchAll(new RegExp(`${verb.source}[^\n\r\d]{0,20}?(\\d{1,6})(?!\s*(?:mm|m\b|x|×))`, 'gi')));
+  if (m2.length) return parseInt(m2[m2.length - 1][1], 10);
+  // 3) número + nombre de producto plural común (ej: 12 tejas, 5 tubos, 200 tornillos)
+  const m3 = Array.from(text.matchAll(/\b(\d{1,6})\s*(tubos|tejas|tornillos|pernos|planchas|electrodos|autoperforantes|capuchones)\b/gi));
+  if (m3.length) return parseInt(m3[m3.length - 1][1], 10);
+  return null;
+}
+
+function parseOrderInfo(msg) {
+  const text = String(msg).toLowerCase();
+  // dimensions like 100 x 100, 100x100, 100 × 100
+  const dimMatch = text.match(/(\d{2,4})\s*[x×]\s*(\d{2,4})/i);
+  const dims = dimMatch ? [parseInt(dimMatch[1], 10), parseInt(dimMatch[2], 10)] : null;
+  // thickness like 2 mm, 1.5mm, 2mm
+  const thickMatch = text.match(/(\d+(?:\.\d+)?)\s*mm\b/i);
+  const thicknessMm = thickMatch ? thickMatch[1].replace(/\.0+$/, '') : null;
+
+  // quantity: SOLO si está explícita, no usar fallback por últimos números
+  const quantity = extractQuantityFromMessage(text);
+  return { dims, thicknessMm, quantity };
+}
+
 function findBestProductByMessage(message, products) {
   const tokens = expandQueryTokens(message);
-  if (!tokens.length || !products?.length) return null;
+  const { dims, thicknessMm } = parseOrderInfo(message);
+  if (!products?.length) return null;
+
+  const expectedDim = dims ? `${dims[0]}x${dims[1]}` : null;
+  const expectedThick = thicknessMm ? `${thicknessMm}mm` : null;
+
   let best = null;
-  let bestScore = 0;
+  let bestScore = -Infinity;
   for (const p of products) {
     const hay = productText(p);
     let s = 0;
-    for (const t of tokens) if (hay.includes(t)) s++;
+    // base token matches
+    for (const t of tokens) if (hay.includes(t)) s += 1;
+    // category boosts
+    if (/\btubo\b/.test(hay)) s += 2;
+    if (/\bcua\w*/.test(hay)) s += 1; // cuadrado/cua
+
+    // dimension boost and gate
+    if (expectedDim) {
+      if (hay.includes(expectedDim)) s += 6; else s -= 4; // penalize if requested dim not present
+    }
+    // thickness boost and gate
+    if (expectedThick) {
+      if (hay.includes(expectedThick)) s += 4; else s -= 2;
+    }
+
+    // prefer primera over segunda when dims+thickness match ties
+    if (/\bprimera\b/.test(hay)) s += 0.5;
+
     if (s > bestScore) {
       best = p;
       bestScore = s;
@@ -212,9 +293,40 @@ function findBestProductByMessage(message, products) {
   return bestScore > 0 ? best : null;
 }
 
-function parseFirstInt(msg) {
-  const m = String(msg).match(/(\d{1,6})/);
-  return m ? parseInt(m[1], 10) : null;
+// Clasificación y candidatos para tubos (cuadrado/rectangular/redondo)
+function detectTubeTypeFromMessage(msg) {
+  const t = normalize(msg);
+  if (/\bcuadrad/.test(t) || /\bcua\b/.test(t)) return 'cuadrado';
+  if (/\brectang/.test(t)) return 'rectangular';
+  if (/\bredond?o?\b/.test(t) || /\bredon\b/.test(t)) return 'redondo';
+  return null;
+}
+function inferTubeTypeFromDims(dims) {
+  if (!dims) return null;
+  return dims[0] === dims[1] ? 'cuadrado' : 'rectangular';
+}
+function extractThicknessFromName(name) {
+  const m = String(name).match(/(\d+(?:\.\d+)?)mm/i);
+  return m ? m[1] : null;
+}
+function qualityPreferenceFromMessage(msg) {
+  const t = normalize(msg);
+  if (/\bespecial\b/.test(t)) return 'especial';
+  if (/\bsegunda\b/.test(t)) return 'segunda';
+  if (/\bprimera\b/.test(t)) return 'primera';
+  return null;
+}
+function filterTubeCandidates(products, dims, type) {
+  const dimStr = dims ? `${dims[0]}x${dims[1]}` : null;
+  return (products || []).filter((p) => {
+    const h = productText(p);
+    if (!/\btubo\b/.test(h)) return false;
+    if (type === 'cuadrado' && !/\bcua\b/.test(h)) return false;
+    if (type === 'rectangular' && !/\brectang\b/.test(h)) return false;
+    if (type === 'redondo' && !/\bredon\b/.test(h)) return false;
+    if (dimStr && !h.includes(dimStr)) return false;
+    return true;
+  });
 }
 
 // ------------------
@@ -455,10 +567,11 @@ Ejemplo de formato de respuesta:
     // --- Intentos locales para no depender de IA ---
     const msg = userMessage.toLowerCase();
     const wantsView = /(\bver (mi )?proforma\b|\bc(?:o|ó)mo va la cuenta\b|\bmi proforma\b)/i.test(userMessage);
-    const addIntent = /(agrega|a\u00F1ade|a\u00F1adir|sumar|pon|quiero|comprar|deme|dame|necesito)/i.test(userMessage);
+    const addIntent = /(agrega|añade|añadir|sumar|pon|poner|quiero|comprar|deme|dame|necesito)/i.test(userMessage);
     const removeIntent = /(quita|elimina|remueve|borra)/i.test(userMessage);
     const updateIntent = /(ajusta|cambia|actualiza|solo|deja)/i.test(userMessage);
-    const quantity = parseFirstInt(userMessage);
+    const order = parseOrderInfo(userMessage);
+    const quantity = order.quantity;
 
     const ensureOfficialPrice = (name) => {
       const map = new Map(products.map((p) => [p.nombre, p.precio]));
@@ -480,7 +593,63 @@ Ejemplo de formato de respuesta:
 
     // Operaciones de agregar
     if (addIntent && quantity) {
-      const best = findBestProductByMessage(userMessage, products);
+      const { dims, thicknessMm } = order;
+      const requestedType = detectTubeTypeFromMessage(userMessage);
+      const inferredType = inferTubeTypeFromDims(dims);
+      const finalType = requestedType || inferredType;
+
+      // Si se trata de tubos y hay ambigüedad en el tipo, preguntar
+      const mentionsTube = /\btubo\b/i.test(userMessage) || requestedType || inferredType;
+      if (mentionsTube && !finalType) {
+        return res.json({ reply: '¿Qué tipo de tubo necesitas: cuadrado, rectangular o redondo?' });
+      }
+
+      // Si hay contradicción entre dimensiones y tipo pedido, confirmar
+      if (requestedType && inferredType && requestedType !== inferredType) {
+        return res.json({ reply: `Mencionas la medida ${dims[0]}x${dims[1]}, que suele ser ${inferredType}. ¿Confirmas que lo quieres ${requestedType} o mejor ${inferredType}?` });
+      }
+
+      // Intentar candidatos de tubo si aplica
+      let best = null;
+      if (mentionsTube && finalType) {
+        let candidates = filterTubeCandidates(products, dims, finalType);
+
+        if (candidates.length === 0 && dims) {
+          // Si no hay coincidencia exacta, intentar invertir dims (por si catálogo usa otro orden) p.ej 50x100 vs 100x50
+          const invCandidates = filterTubeCandidates(products, [dims[1], dims[0]], finalType);
+          if (invCandidates.length > 0) candidates = invCandidates;
+        }
+
+        if (candidates.length > 0) {
+          // Selección por espesor
+          if (thicknessMm) {
+            const tStr = `${thicknessMm}mm`;
+            const byThick = candidates.filter((c) => productText(c).includes(tStr));
+            if (byThick.length > 0) candidates = byThick;
+          } else {
+            // Si faltó espesor y hay múltiples opciones, preguntar opciones
+            const options = Array.from(new Set(candidates.map((c) => extractThicknessFromName(c.nombre)).filter(Boolean)));
+            if (options.length > 1) {
+              return res.json({ reply: `¿Qué espesor prefieres para ${dims ? dims.join('x') : 'el tubo'} ${finalType}? Opciones: ${options.join(', ')}.` });
+            }
+          }
+
+          // Preferir calidad solicitada o 'primera'
+          const qPref = qualityPreferenceFromMessage(userMessage) || 'primera';
+          const byQuality = candidates.filter((c) => new RegExp(`\\b${qPref}\\b`, 'i').test(c.nombre));
+          if (byQuality.length > 0) candidates = byQuality;
+
+          // Si quedan múltiples, usar mayor score por tokens generales
+          best = candidates.reduce((acc, cur) => {
+            const score = expandQueryTokens(userMessage).reduce((s, t) => s + (productText(cur).includes(t) ? 1 : 0), 0);
+            return !acc || score > acc.score ? { item: cur, score } : acc;
+          }, null)?.item;
+        }
+      }
+
+      // Fallback a búsqueda general si no hubo candidato de tubos
+      if (!best) best = findBestProductByMessage(userMessage, products);
+
       if (best) {
         const price = ensureOfficialPrice(best.nombre) ?? best.precio ?? 0;
         const current = getUserProfile(req).proforma || [];
@@ -492,17 +661,32 @@ Ejemplo de formato de respuesta:
       }
     }
 
-    // Operaciones de quitar
+    // Operaciones de quitar (con cantidad específica)
     if (removeIntent) {
-      const best = findBestProductByMessage(userMessage, products) || (profile.proforma || [])[((profile.proforma || []).length - 1)]?.nombre;
-      let removedName = null;
-      if (best) {
-        const name = typeof best === 'string' ? best : best.nombre;
-        const current = (getUserProfile(req).proforma || []).filter((it) => it.nombre !== name);
-        if (current.length !== (profile.proforma || []).length) removedName = name;
-        updateUserProfile(req, { proforma: current, history: [...conversationHistory, { role: 'user', content: userMessage }] });
+      const currentList = getUserProfile(req).proforma || [];
+      if (!currentList.length) {
+        return res.json({ reply: 'Tu proforma está vacía. ¿Qué deseas quitar?' });
       }
-      return renderAndReturn(removedName ? `He quitado ${removedName} de tu proforma.` : 'No encontré el producto a quitar. Dime el nombre o medida.');
+
+      const best = findBestProductByMessage(userMessage, products);
+      // Si no podemos determinar el producto, pedir que lo aclare listando opciones
+      if (!best) {
+        const nombres = currentList.map((it) => `- ${it.nombre} (cant: ${it.cantidad})`).join('\n');
+        return res.json({ reply: `No identifiqué el producto a quitar. Indícame el nombre exacto o la medida.\n\nActualmente en tu proforma:\n${nombres}` });
+      }
+
+      const name = typeof best === 'string' ? best : best.nombre;
+      const removeQty = extractQuantityFromMessage(userMessage);
+      if (!removeQty) {
+        return res.json({ reply: `¿Cuántas unidades deseas quitar de ${name}?` });
+      }
+
+      const next = currentList.map((it) =>
+        it.nombre === name ? { ...it, cantidad: Math.max(0, Number(it.cantidad || 0) - removeQty) } : it
+      ).filter((it) => (it.cantidad || 0) > 0);
+
+      updateUserProfile(req, { proforma: next, history: [...conversationHistory, { role: 'user', content: userMessage }] });
+      return renderAndReturn(`He quitado ${removeQty} unidades de ${name}.`);
     }
 
     // Operaciones de actualizar cantidad

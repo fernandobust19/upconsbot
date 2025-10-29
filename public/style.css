@@ -63,6 +63,14 @@ body {
     font-weight: bold;
 }
 
+/* Thumbnails in tables */
+.bot-message td img {
+    height: 24px;
+    width: auto;
+    vertical-align: middle;
+    margin-right: 6px;
+}
+
 #input-container {
     display: flex;
     padding: 10px;

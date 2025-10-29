@@ -594,15 +594,11 @@ Ejemplo de formato de respuesta:
     const fallbackReply = () => {
       const base = productsForContext.length > 0 ? productsForContext : products;
       if (base.length > 0) {
-        const top = base.slice(0, 5);
-        const lines = top
-          .map((p) => {
-            const img = getProductImageURL(p.nombre);
-            const tag = img ? `<img src="${img}" alt="${p.nombre}" style="height:48px;width:auto;vertical-align:middle;margin-right:6px;border-radius:3px;">` : '';
-            return `${tag}${p.nombre}: $${p.precio}`;
-          })
+        const sugerencias = base
+          .slice(0, 10)
+          .map((p) => `- ${p.nombre}: ${p.precio}`)
           .join('\n');
-        return `Por ahora no puedo generar una respuesta avanzada, pero estas opciones están disponibles:\n\n${lines}\n\n¿Te interesa alguno? Puedes indicarme medida, calibre o cantidad.\n\nPuedes ver tu proforma aquí: /proforma\nDescarga tu proforma aquí: /proforma?download=1\nLlámanos: ${COMPANY_TEL_LINK}`;
+        return `Por ahora no puedo generar una respuesta avanzada, pero estas opciones están disponibles:\n\n${sugerencias}\n\n¿Te interesa alguno? Puedes indicarme medida, calibre o cantidad.\n\nPuedes ver tu proforma aquí: /proforma\nDescarga tu proforma aquí: /proforma?download=1\nLlámanos: ${COMPANY_TEL_LINK}`;
       }
       return `No puedo acceder a la IA ni a la lista de productos por ahora. ¿Podrías decirme más detalles (producto, medida, cantidad, color)?\n\nLlámanos: ${COMPANY_TEL_LINK}`;
     };
@@ -823,3 +819,4 @@ Ejemplo de formato de respuesta:
 app.listen(port, () => {
   console.log(`Servidor del bot escuchando en http://localhost:${port}`);
 });
+

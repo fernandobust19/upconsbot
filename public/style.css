@@ -71,6 +71,14 @@ body {
     margin-right: 6px;
 }
 
+/* Inline preview images in generic bot replies */
+.bot-message img {
+    max-height: 120px;
+    height: auto;
+    width: auto;
+    border-radius: 4px;
+}
+
 #input-container {
     display: flex;
     padding: 10px;

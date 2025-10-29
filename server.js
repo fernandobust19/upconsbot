@@ -296,6 +296,18 @@ function parseOrderInfo(msg) {
 
 function findBestProductByMessage(message, products) {
   const tokens = expandQueryTokens(message);
+
+  // Si el mensaje solo contiene intenciones, números o palabras de cantidad, no intentar adivinar.
+  const meaningfulTokens = tokens.filter(token => {
+    if (!isNaN(token)) return false; // No es un número
+    if (['unidade', 'pieza', 'caja', 'pallet', 'metro'].includes(token)) return false; // No es palabra de cantidad/medida
+    if (/^(agrega|añade|añadir|sumar|pon|poner|quiero|comprar|deme|dame|necesito)$/i.test(token)) return false; // No es un verbo de intención
+    return true;
+  });
+
+  if (meaningfulTokens.length === 0) {
+    return null;
+  }
   const { dims, thicknessMm } = parseOrderInfo(message);
   if (!products?.length) return null;
 
@@ -833,7 +845,7 @@ Ejemplo de formato de respuesta:
 
     // Operaciones de actualizar cantidad
     if (updateIntent && quantity) {
-      const best = findBestProductByMessage(userMessage, products) || (profile.proforma || [])[((profile.proforma || []).length - 1)]?.nombre;
+      const best = findBestProductByMessage(userMessage, products) || profile.proforma?.[profile.proforma?.length - 1];
       if (best) {
         const name = typeof best === 'string' ? best : best.nombre;
         const current = (getUserProfile(req).proforma || []).map((it) => (it.nombre === name ? { ...it, cantidad: quantity } : it));

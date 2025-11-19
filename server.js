@@ -1,5 +1,16 @@
+const corsOptions = {
+  origin: [
+    'https://fernandobust19.github.io',
+    'https://www.conupcons.com' // agrega cualquier otro dominio que necesites
+  ],
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: false
+};
+
 require('dotenv').config();
 const express = require('express');
+const cors = require('cors');
 const path = require('path');
 const fs = require('fs').promises;
 const fsSync = require('fs');
@@ -16,6 +27,8 @@ const app = express();
 const port = process.env.PORT || 3000;
 app.set('trust proxy', true);
 
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // responde las preflight
 app.use(express.static('public'));
 app.use(express.json());
 if (morgan) app.use(morgan('combined'));
@@ -23,6 +36,7 @@ if (morgan) app.use(morgan('combined'));
 // ------------------
 // Config empresa
 // ------------------
+
 const COMPANY = {
   name: process.env.COMPANY_NAME || 'UP-CONS',
   address: process.env.COMPANY_ADDRESS || 'Av. Principal 123, Ciudad, País',

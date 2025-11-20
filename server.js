@@ -19,6 +19,7 @@ app.set('trust proxy', true);
 
 // CORS: permitir dominios autorizados y peticiones sin origin (file://, curl)
 const ALLOWED_ORIGINS = [
+  'https://fernandobust19.github.io',
   'https://fernandobust19.github.io/upcons',
   'https://fernandobust19.github.io/upcons/',
   'https://www.conupcons.com',
@@ -28,7 +29,8 @@ const ALLOWED_ORIGINS = [
 ];
 const corsOptions = {
   origin: (origin, cb) => {
-    if (!origin) return cb(null, true); // permite file:// y peticiones sin encabezado Origin
+    // permite file:// (sin Origin) y navegadores que envían "null" como origen
+    if (!origin || origin === 'null') return cb(null, true);
     const ok = ALLOWED_ORIGINS.some((o) => origin === o || origin.startsWith(o));
     return cb(ok ? null : new Error('Origen no permitido por CORS'), ok);
   },

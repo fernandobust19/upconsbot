@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const chatBox = document.getElementById('chat-box');
     const userInput = document.getElementById('user-input');
     const sendBtn = document.getElementById('send-btn');
+    const API_BASE = 'https://upconsbot.onrender.com';
 
     const renderInteractiveProductTable = (markdown) => {
         const lines = markdown.split('\n').filter(line => line.trim().startsWith('|') && !line.includes('---'));
@@ -12,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let tableHtml = `<table><thead><tr><th>${headers.join('</th><th>')}</th></tr></thead><tbody>`;
 
-        lines.forEach((line, index) => {
+        lines.forEach((line) => {
             const parts = line.split('|').map(s => s.trim()).filter(Boolean);
             if (parts.length >= 2) {
                 const productName = parts[0];
@@ -59,11 +60,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         tableHtml += '</tbody></table>';
         
-        // Replace the markdown table with the generated HTML table
-        // This part needs careful adjustment based on how the markdown is embedded in the original text
-        // For now, we'll assume the markdown table is at the beginning of the text or can be replaced directly
-        // A more robust solution might involve finding the exact markdown table string within the original markdown
         return markdown.substring(0, markdown.indexOf('|')) + tableHtml;
+    };
+
+    // Reescribe enlaces de proforma para apuntar al backend en Render
+    const normalizeProformaLinks = (val) => {
+        return val
+            .replace(/\/proforma\?download=1/g, `${API_BASE}/proforma?download=1`)
+            .replace(/\/proforma\.pdf/g, `${API_BASE}/proforma.pdf`)
+            .replace(/\/proforma\b(?!\?download=1|\.pdf)/g, `${API_BASE}/proforma`);
     };
 
     const addMessage = (text, sender) => {
@@ -72,7 +77,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const p = document.createElement('div');
 
-        // Determine the type of table to render
         const isProductList = sender === 'bot' && text.includes('| Producto') && text.includes('| Precio');
         const isProformaTable = sender === 'bot' && (
             (text.includes('| Cantidad') && text.includes('| Total')) ||
@@ -85,10 +89,10 @@ document.addEventListener('DOMContentLoaded', () => {
             p.innerHTML = renderMarkdownTable(text);
         } else {
             // Normal rendering for text and links
-            let html = text;
+            let html = normalizeProformaLinks(text);
             html = html.replace(/(\/proforma\?download=1)/g, '<a href="$1" download>Descargar Proforma (HTML)</a>');
             html = html.replace(/(\/proforma\.pdf)/g, '<a href="$1" download>Descargar Proforma (PDF)</a>');
-            html = html.replace(/(\/proforma\b)(?!\?download=1)/g, '<a href="$1" target="_blank">Ver Proforma en nueva pestaña</a>');
+            html = html.replace(/(\/proforma\b)(?!\?download=1|\.pdf)/g, '<a href="$1" target="_blank">Ver Proforma en nueva pestana</a>');
             html = html.replace(/(tel:[+\d][+\d\-\s()]*)/g, '<a href="$1">Llamar ahora</a>');
             p.innerHTML = html.replace(/\n/g, '<br>');
         }
@@ -113,10 +117,10 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (isProformaTable) {
             p.innerHTML = renderMarkdownTable(text);
         } else {
-            let html = text;
+            let html = normalizeProformaLinks(text);
             html = html.replace(/(\/proforma\?download=1)/g, '<a href="$1" download>Descargar Proforma (HTML)</a>');
             html = html.replace(/(\/proforma\.pdf)/g, '<a href="$1" download>Descargar Proforma (PDF)</a>');
-            html = html.replace(/(\/proforma\b)(?!\?download=1)/g, '<a href="$1" target="_blank">Ver Proforma en nueva pestaña</a>');
+            html = html.replace(/(\/proforma\b)(?!\?download=1|\.pdf)/g, '<a href="$1" target="_blank">Ver Proforma en nueva pestana</a>');
             html = html.replace(/(tel:[+\d][+\d\-\s()]*)/g, '<a href="$1">Llamar ahora</a>');
             p.innerHTML = html.replace(/\n/g, '<br>');
         }
@@ -134,7 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
         userInput.value = '';
 
         try {
-            const response = await fetch('/chat', {
+            const response = await fetch(`${API_BASE}/chat`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -148,7 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const data = await response.json();
-            addMessage(data.reply || 'No se recibió una respuesta válida.', 'bot');
+            addMessage(data.reply || 'No se recibio una respuesta valida.', 'bot');
 
         } catch (error) {
             console.error('Error al enviar mensaje:', error);
@@ -165,7 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Mensaje inicial del asistente
     try {
-        const initial = 'Bienvenido a UP-CONS, tu aliado en construcción. ¿Cómo puedo ayudarte?';
+        const initial = 'Bienvenido a UP-CONS, tu aliado en construccion. Como puedo ayudarte?';
         addMessageEnhanced(initial, 'bot');
     } catch {}
 

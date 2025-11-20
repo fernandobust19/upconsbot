@@ -1,7 +1,7 @@
 const corsOptions = {
   origin: [
     'https://fernandobust19.github.io/upcons/',
-    'https://sites.google.com',
+    'https://sites.google.com/view/upcons/up-cons',
     'https://www.conupcons.com',
     'http://localhost:8080' // agrega cualquier otro dominio que necesites
   ],

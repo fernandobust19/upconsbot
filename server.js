@@ -35,6 +35,7 @@ app.use(express.static('public'));
 app.use(express.json());
 if (morgan) app.use(morgan('combined'));
 
+
 // ------------------
 // Config empresa
 // ------------------

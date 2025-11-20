@@ -95,18 +95,18 @@ body {
 #input-container {
     display: grid;
     grid-template-columns: minmax(0, 1fr) max-content;
-    padding: 6px 8px 8px;
-    gap: 6px;
+    padding: 6px 8px 6px;
+    gap: 4px; /* campo y boton mas juntos */
     align-items: center;
 }
 
 #user-input {
     width: 100%;
-    max-width: 60%;
+    max-width: 58%;
     min-width: 0; /* permite que el campo se encoja y deje espacio al boton */
     border: 1px solid #ccc;
     border-radius: 14px;
-    padding: 7px 9px;
+    padding: 7px 8px;
     font-size: 0.95em;
 }
 
@@ -114,7 +114,7 @@ body {
     border: none;
     background-color: #007bff;
     color: white;
-    padding: 8px 12px;
+    padding: 8px 11px;
     white-space: nowrap; /* evita que se corte el texto del boton */
     border-radius: 14px;
     cursor: pointer;

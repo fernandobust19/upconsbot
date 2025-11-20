@@ -695,13 +695,14 @@ Interpretación de Términos (para tu conocimiento interno):
 
 Instrucciones de respuesta:
 - **Mantener Contexto**: Si el cliente ya ha preguntado por un producto (ej: "tejas"), y luego proporciona más detalles (ej: "de 3 metros"), asume que los detalles son para el producto que se está discutiendo. No vuelvas a preguntar por el producto.
+- **Claridad y precisión**: Si falta un dato clave (medida, calibre, cantidad o tipo), pide SOLO ese dato faltante en una frase corta. No inventes productos que no estén en el catálogo.
 - **Proactividad**: Cuando un cliente pregunte por un producto (ej: "necesito tejas"), busca en el catálogo los productos que coincidan con la búsqueda. Si encuentras resultados, presenta las opciones al cliente en una tabla Markdown con nombre y precio. Si no encuentras resultados, pide más detalles de forma amigable.
 - **Ejemplo con Tejas**: Si el cliente pregunta por "teja española", y en el catálogo tienes "Teja Española Fondo Naranja 3.70 M" y "Teja Española Fondo Terracota 6.14 M", tu respuesta debería ser algo como: "¡Claro! Tenemos estas opciones de teja española: | Producto | Precio | | --- | --- | | Teja Española Fondo Naranja 3.70 M | $10.00 | | Teja Española Fondo Terracota 6.14 M | $15.00 | ¿Cuál te gustaría agregar a tu proforma?".
 - **Gestión de Proforma**:
   - Si el cliente pide agregar productos (ej: "5 tubos de 20x20"), actualiza la proforma. Si un producto ya existe, suma la nueva cantidad.
   - Si el cliente pide "ver mi proforma" o "cómo va la cuenta", muéstrale la tabla y el total.
   - Si pide "quitar las tejas", elimínalas de la proforma.
-  - Si pide "empezar de nuevo" o "limpiar", vacía la proforma.
+  - Si pide "empezar de nuevo" o "limpiar", vacía la proforma y confírmalo en la respuesta.
 - **Tono y Formato**: Sé siempre amable y halaga al cliente (ej. "¡Excelente elección!"). Usa saltos de línea (\n) para separar párrafos y antes de mostrar una tabla para que la respuesta no se vea amontonada.
  - **Formato de Tabla**: Cuando muestres la proforma o una lista de productos, SIEMPRE usa una tabla Markdown.
  - **Ofrecer Enlace a Proforma**: Cuando la proforma tenga productos, finaliza tu respuesta ofreciendo:
@@ -743,6 +744,7 @@ Ejemplo de formato de respuesta:
     const wantsView = /(\bver (mi )?proforma\b|\bc(?:o|ó)mo va la cuenta\b|\bmi proforma\b)/i.test(userMessage);
     const addIntent = /(agrega|añade|añadir|sumar|pon|poner|quiero|comprar|deme|dame|necesito)/i.test(userMessage);
     const removeIntent = /(quita|elimina|remueve|borra)/i.test(userMessage);
+    const resetIntent = /(borrar todo|borra todo|elimina todo|quitar todo|limpia todo|vacía todo|vaciar todo|empezar de nuevo|empezar de cero|reinicia|reiniciar|reset)/i.test(msg);
     const updateIntent = /(ajusta|cambia|actualiza|solo|deja)/i.test(userMessage);
     const order = parseOrderInfo(userMessage);
     const quantity = order.quantity;
@@ -757,6 +759,12 @@ Ejemplo de formato de respuesta:
       const tailLinks = `\n\nPuedes ver tu proforma detallada aquí: /proforma\nDescarga tu proforma aquí: /proforma?download=1\nPuedes llamarnos aquí: ${COMPANY_TEL_LINK}`;
       return res.json({ reply: `${leadText}\n\n${table}\n\nTotal: $${total.toFixed(2)}${tailLinks}` });
     };
+
+    if (resetIntent) {
+      const keepName = getUserProfile(req).nombre;
+      updateUserProfile(req, { nombre: keepName || null, proforma: [], history: [] });
+      return res.json({ reply: 'Listo, reinicié la conversación y vacié tu proforma. Cuéntame qué necesitas cotizar ahora.' });
+    }
 
     if (wantsView) {
       if (!profile.proforma?.length) {

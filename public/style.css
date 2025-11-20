@@ -9,7 +9,7 @@ body {
     box-sizing: inherit;
 }
 
-#chat-container {
+body {
     font-family: Arial, sans-serif;
     background-color: #f4f4f9;
     display: flex;
@@ -17,12 +17,14 @@ body {
     align-items: center;
     min-height: 100vh;
     margin: 0;
-    padding: 12px;
+    padding: 12px 16px 12px 12px; /* agrega un poco de espacio a la derecha para evitar corte */
 }
 
 #chat-container {
-    width: min(420px, 92vw);
+    width: min(400px, 90vw);
     height: min(520px, 82vh);
+    margin-left: 10px; /* leve desplazamiento hacia la izquierda para que se vea completo */
+    margin-right: auto;
     border: 1px solid #ccc;
     border-radius: 10px;
     background-color: #fff;

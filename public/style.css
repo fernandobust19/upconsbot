@@ -21,7 +21,7 @@ body {
 }
 
 #chat-container {
-    width: min(380px, 92vw);
+    width: min(340px, 88vw);
     height: 100vh;
     margin: 0;
     border: 1px solid #ccc;
@@ -95,14 +95,14 @@ body {
 #input-container {
     display: grid;
     grid-template-columns: minmax(0, 1fr) max-content;
-    padding: 6px;
+    padding: 6px 8px 8px;
     gap: 6px;
     align-items: center;
 }
 
 #user-input {
     width: 100%;
-    max-width: 70%;
+    max-width: 60%;
     min-width: 0; /* permite que el campo se encoja y deje espacio al boton */
     border: 1px solid #ccc;
     border-radius: 14px;

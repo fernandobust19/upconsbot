@@ -1,10 +1,10 @@
 require('dotenv').config();
 const express = require('express');
+const cors = require('cors');
 const path = require('path');
 const fs = require('fs').promises;
 const fsSync = require('fs');
 const OpenAI = require('openai');
-const cors = require('cors');
 
 let morgan;
 try {
@@ -17,28 +17,36 @@ const app = express();
 const port = process.env.PORT || 3000;
 app.set('trust proxy', true);
 
-// CORS abierto para permitir peticiones desde archivos locales o dominios externos
+// CORS: permitir dominios autorizados y peticiones sin origin (file://, curl)
 const ALLOWED_ORIGINS = [
-  'https://fernandobust19.github.io',
+  'https://fernandobust19.github.io/upcons',
+  'https://fernandobust19.github.io/upcons/',
   'https://www.conupcons.com',
   'https://conupcons.com',
+  'https://sites.google.com/view/upcons/up-cons',
+  'http://localhost:8080',
 ];
-app.use(cors({
+const corsOptions = {
   origin: (origin, cb) => {
-    if (!origin) return cb(null, true); // Permitir herramientas locales (file://) y curl
-    const ok = ALLOWED_ORIGINS.some((o) => origin.startsWith(o));
+    if (!origin) return cb(null, true); // permite file:// y peticiones sin encabezado Origin
+    const ok = ALLOWED_ORIGINS.some((o) => origin === o || origin.startsWith(o));
     return cb(ok ? null : new Error('Origen no permitido por CORS'), ok);
   },
   methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type'],
-}));
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: false,
+};
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // responde preflight
 app.use(express.static('public'));
 app.use(express.json());
 if (morgan) app.use(morgan('combined'));
 
+
 // ------------------
 // Config empresa
 // ------------------
+
 const COMPANY = {
   name: process.env.COMPANY_NAME || 'UP-CONS',
   address: process.env.COMPANY_ADDRESS || 'Av. Principal 123, Ciudad, País',

@@ -24,6 +24,7 @@ const ALLOWED_ORIGINS = [
   'https://fernandobust19.github.io/upcons/',
   'https://www.conupcons.com',
   'https://conupcons.com',
+  'https://sites.google.com',
   'https://sites.google.com/view/upcons/up-cons',
   'http://localhost:8080',
 ];

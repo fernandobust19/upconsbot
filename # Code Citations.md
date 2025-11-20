@@ -1,25 +1,15 @@
 # Code Citations
 
 ## License: desconocido
-https://github.com/Sushree-01/backend/tree/2b388edbf5124fdada8807bed5cfbcc2ca0469be/index.js
+https://github.com/Marost/webpperu/tree/9ae5864972f358f95cde4cb8554023b2cdabdbe9/noticia.php
 
-```javascript
-const express = require('express');
-const axios = require('axios');
-require('dotenv').config();
-
-const app = express();
-const port = process.env.PORT || 3000;
-
-app.use(express.json());
-
-// Ejemplo de endpoint funcional
-app.get('/', (req, res) => {
-    res.send('Servidor Express funcionando correctamente.');
-});
-
-app.listen(port, () => {
-    console.log(`Servidor escuchando en http://localhost:${port}`);
-});
+```
+>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
 ```
 

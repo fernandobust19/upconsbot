@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs').promises;
 const fsSync = require('fs');
 const OpenAI = require('openai');
+const cors = require('cors');
 
 let morgan;
 try {
@@ -16,6 +17,21 @@ const app = express();
 const port = process.env.PORT || 3000;
 app.set('trust proxy', true);
 
+// CORS abierto para permitir peticiones desde archivos locales o dominios externos
+const ALLOWED_ORIGINS = [
+  'https://fernandobust19.github.io',
+  'https://www.conupcons.com',
+  'https://conupcons.com',
+];
+app.use(cors({
+  origin: (origin, cb) => {
+    if (!origin) return cb(null, true); // Permitir herramientas locales (file://) y curl
+    const ok = ALLOWED_ORIGINS.some((o) => origin.startsWith(o));
+    return cb(ok ? null : new Error('Origen no permitido por CORS'), ok);
+  },
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type'],
+}));
 app.use(express.static('public'));
 app.use(express.json());
 if (morgan) app.use(morgan('combined'));

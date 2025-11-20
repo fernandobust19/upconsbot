@@ -1,7 +1,9 @@
 const corsOptions = {
   origin: [
     'https://fernandobust19.github.io',
-    'https://www.conupcons.com' // agrega cualquier otro dominio que necesites
+    'https://sites.google.com',
+    'https://www.conupcons.com',
+    'http://localhost:8080' // agrega cualquier otro dominio que necesites
   ],
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],

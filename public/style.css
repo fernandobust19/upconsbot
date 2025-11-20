@@ -11,22 +11,21 @@ body {
 
 body {
     font-family: Arial, sans-serif;
-    background-color: #f4f4f9;
+    background-color: transparent;
     display: flex;
-    justify-content: center;
-    align-items: center;
+    justify-content: flex-start;
+    align-items: stretch;
     min-height: 100vh;
     margin: 0;
-    padding: 12px 16px 12px 12px; /* agrega un poco de espacio a la derecha para evitar corte */
+    padding: 0; /* sin margen lateral extra: el chat arranca en el borde izquierdo */
 }
 
 #chat-container {
-    width: min(400px, 90vw);
-    height: min(520px, 82vh);
-    margin-left: 10px; /* leve desplazamiento hacia la izquierda para que se vea completo */
-    margin-right: auto;
+    width: min(480px, 100vw);
+    height: 100vh;
+    margin: 0;
     border: 1px solid #ccc;
-    border-radius: 10px;
+    border-radius: 0 10px 10px 0; /* pegado al borde izquierdo */
     background-color: #fff;
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     display: flex;
@@ -129,6 +128,6 @@ body {
 @media (max-width: 480px) {
     #chat-container {
         width: 100%;
-        height: 70vh;
+        height: 100vh;
     }
 }

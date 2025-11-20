@@ -2,42 +2,69 @@ document.addEventListener('DOMContentLoaded', () => {
     const chatBox = document.getElementById('chat-box');
     const userInput = document.getElementById('user-input');
     const sendBtn = document.getElementById('send-btn');
+    const proformaItems = document.getElementById('proforma-items');
+    const proformaTotal = document.getElementById('proforma-total');
     const API_BASE = 'https://upconsbot.onrender.com';
 
-    const renderInteractiveProductTable = (markdown) => {
-        const lines = markdown.split('\n').filter(line => line.trim().startsWith('|') && !line.includes('---'));
-        const headerLine = lines.find(line => line.includes('Producto') && line.includes('Precio')) || lines.shift();
-        if (!headerLine) return markdown; // Fallback to old rendering
+    // --- Lógica de la Proforma ---
+    const updateProforma = (proforma) => {
+        if (!proformaItems || !proformaTotal) return;
 
-        const headers = headerLine.split('|').map(h => h.trim()).filter(Boolean);
+        proformaItems.innerHTML = ''; // Limpiar antes de renderizar
+        let total = 0;
 
-        let tableHtml = `<table><thead><tr><th>${headers.join('</th><th>')}</th></tr></thead><tbody>`;
+        if (proforma && proforma.length > 0) {
+            proforma.forEach(item => {
+                const itemElement = document.createElement('div');
+                itemElement.classList.add('proforma-item');
 
-        lines.forEach((line) => {
-            const parts = line.split('|').map(s => s.trim()).filter(Boolean);
-            if (parts.length >= 2) {
-                const productName = parts[0];
-                const productPrice = parts[1];
-                tableHtml += `
-                    <tr>
-                        <td>${productName}</td>
-                        <td>${productPrice}</td>
-                    </tr>
-                `;
-            }
+                const name = document.createElement('span');
+                name.classList.add('proforma-item-name');
+                name.textContent = item.nombre;
+
+                const qty = document.createElement('span');
+                qty.classList.add('proforma-item-qty');
+                qty.textContent = `Cant: ${item.cantidad}`;
+                
+                const price = document.createElement('span');
+                price.classList.add('proforma-item-price');
+                const subtotal = (item.cantidad || 0) * (item.precio || 0);
+                price.textContent = `$${subtotal.toFixed(2)}`;
+
+                itemElement.appendChild(name);
+                itemElement.appendChild(qty);
+                itemElement.appendChild(price);
+                proformaItems.appendChild(itemElement);
+
+                total += subtotal;
+            });
+        }
+
+        proformaTotal.innerHTML = `<strong>Total: $${total.toFixed(2)}</strong>`;
+    };
+
+    // --- Lógica del Chat ---
+
+    const renderInteractiveProductTable = (products) => {
+        let tableHtml = `<table><thead><tr><th>Producto</th><th>Precio</th></tr></thead><tbody>`;
+        products.forEach(product => {
+            // Guardamos el nombre del producto en un atributo de datos para la selección
+            tableHtml += `
+                <tr data-product-name="${product.nombre}">
+                    <td>${product.nombre}</td>
+                    <td>$${product.precio.toFixed(2)}</td>
+                </tr>
+            `;
         });
-
         tableHtml += '</tbody></table>';
         return tableHtml;
     };
-
+    
     const renderMarkdownTable = (markdown) => {
         const tableRegex = /(?:^|\n)(\|.*?\|\s*\n\| *--- *\|.*(?:\n\|.*?\|.*)*)/;
         const match = markdown.match(tableRegex);
 
-        if (!match) {
-            return markdown;
-        }
+        if (!match) return markdown;
 
         const tableMarkdown = match[1].trim();
         const lines = tableMarkdown.split('\n').filter(line => line.trim().startsWith('|'));
@@ -63,86 +90,48 @@ document.addEventListener('DOMContentLoaded', () => {
         return markdown.substring(0, markdown.indexOf('|')) + tableHtml;
     };
 
-    // Reescribe enlaces de proforma para apuntar al backend en Render
-    const normalizeProformaLinks = (val) => {
-        return val
-            .replace(/\/proforma\?download=1/g, `${API_BASE}/proforma?download=1`)
-            .replace(/\/proforma\.pdf/g, `${API_BASE}/proforma.pdf`)
-            .replace(/\/proforma\b(?!\?download=1|\.pdf)/g, `${API_BASE}/proforma`);
+    const normalizeLinks = (text) => {
+        let html = text.replace(/\n/g, '<br>');
+        html = html.replace(/(\/proforma\?download=1)/g, `<a href="${API_BASE}$1" download>Descargar Proforma (HTML)</a>`);
+        html = html.replace(/(\/proforma\.pdf)/g, `<a href="${API_BASE}$1" download>Descargar Proforma (PDF)</a>`);
+        html = html.replace(/(\/proforma)\b/g, `<a href="${API_BASE}$1" target="_blank">Ver Proforma</a>`);
+        html = html.replace(/(tel:[+\d][+\d\-\s()]*)/g, '<a href="$1">Llamar ahora</a>');
+        return html;
     };
 
-    const addMessage = (text, sender) => {
+    const addMessage = (data, sender) => {
         const messageElement = document.createElement('div');
         messageElement.classList.add('message', `${sender}-message`);
         
-        const p = document.createElement('div');
+        const contentDiv = document.createElement('div');
 
-        const isProductList = sender === 'bot' && text.includes('| Producto') && text.includes('| Precio');
-        const isProformaTable = sender === 'bot' && (
-            (text.includes('| Cantidad') && text.includes('| Total')) ||
-            (text.includes('| Nombre') && text.includes('| Cantidad') && (text.includes('Precio unitario') || text.includes('| Subtotal')))
-        );
-
-        if (isProductList) {
-            p.innerHTML = renderInteractiveProductTable(text);
-        } else if (isProformaTable) {
-            p.innerHTML = renderMarkdownTable(text);
+        if (sender === 'bot' && data.products && data.products.length > 0) {
+            contentDiv.innerHTML = renderInteractiveProductTable(data.products);
+        } else if (sender === 'bot' && data.isProforma) {
+            contentDiv.innerHTML = renderMarkdownTable(data.text);
         } else {
-            // Normal rendering for text and links
-            let html = normalizeProformaLinks(text);
-            html = html.replace(/(\/proforma\?download=1)/g, '<a href="$1" download>Descargar Proforma (HTML)</a>');
-            html = html.replace(/(\/proforma\.pdf)/g, '<a href="$1" download>Descargar Proforma (PDF)</a>');
-            html = html.replace(/(\/proforma\b)(?!\?download=1|\.pdf)/g, '<a href="$1" target="_blank">Ver Proforma en nueva pestana</a>');
-            html = html.replace(/(tel:[+\d][+\d\-\s()]*)/g, '<a href="$1">Llamar ahora</a>');
-            p.innerHTML = html.replace(/\n/g, '<br>');
+            const text = (typeof data === 'string') ? data : data.text;
+            contentDiv.innerHTML = normalizeLinks(text);
         }
 
-        messageElement.appendChild(p);
+        messageElement.appendChild(contentDiv);
         chatBox.appendChild(messageElement);
         chatBox.scrollTop = chatBox.scrollHeight;
     };
 
-    // Improved version that adds download and tel: links in addition to /proforma
-    const addMessageEnhanced = (text, sender) => {
-        const messageElement = document.createElement('div');
-        messageElement.classList.add('message', `${sender}-message`);
-
-        const p = document.createElement('div');
-
-        const isProductList = sender === 'bot' && text.includes('| Producto') && text.includes('| Precio');
-        const isProformaTable = sender === 'bot' && text.includes('| Cantidad') && text.includes('| Total');
-
-        if (isProductList) {
-            p.innerHTML = renderInteractiveProductTable(text);
-        } else if (isProformaTable) {
-            p.innerHTML = renderMarkdownTable(text);
-        } else {
-            let html = normalizeProformaLinks(text);
-            html = html.replace(/(\/proforma\?download=1)/g, '<a href="$1" download>Descargar Proforma (HTML)</a>');
-            html = html.replace(/(\/proforma\.pdf)/g, '<a href="$1" download>Descargar Proforma (PDF)</a>');
-            html = html.replace(/(\/proforma\b)(?!\?download=1|\.pdf)/g, '<a href="$1" target="_blank">Ver Proforma en nueva pestana</a>');
-            html = html.replace(/(tel:[+\d][+\d\-\s()]*)/g, '<a href="$1">Llamar ahora</a>');
-            p.innerHTML = html.replace(/\n/g, '<br>');
-        }
-
-        messageElement.appendChild(p);
-        chatBox.appendChild(messageElement);
-        chatBox.scrollTop = chatBox.scrollHeight;
-    };
-
-    const handleSendMessage = async () => {
-        const message = userInput.value.trim(); // Keep this for user-typed messages
+    const handleSendMessage = async (messageOverride = null) => {
+        const message = messageOverride || userInput.value.trim();
         if (message === '') return;
 
-        addMessageEnhanced(message, 'user');
-        userInput.value = '';
+        addMessage(message, 'user');
+        if (!messageOverride) {
+            userInput.value = '';
+        }
 
         try {
             const response = await fetch(`${API_BASE}/chat`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ message: message }),
             });
 
@@ -152,26 +141,45 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const data = await response.json();
-            addMessage(data.reply || 'No se recibio una respuesta valida.', 'bot');
+            
+            // La IA ahora puede devolver una lista de productos o una tabla de proforma
+            const botReply = {
+                text: data.reply || 'No se recibió una respuesta válida.',
+                products: data.products, // Array de productos para la tabla interactiva
+                isProforma: data.isProforma, // Booleano si es una tabla de proforma
+            };
+
+            addMessage(botReply, 'bot');
+
+            // Actualizar la vista de la proforma con los datos del servidor
+            if (data.proforma) {
+                updateProforma(data.proforma);
+            }
 
         } catch (error) {
             console.error('Error al enviar mensaje:', error);
-            addMessageEnhanced('Lo siento, no puedo responder en este momento.', 'bot');
+            addMessage('Lo siento, no puedo responder en este momento.', 'bot');
         }
     };
 
-    sendBtn.addEventListener('click', handleSendMessage);
+    // --- Event Listeners ---
+    sendBtn.addEventListener('click', () => handleSendMessage());
     userInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             handleSendMessage();
         }
     });
 
+    // Delegación de eventos para seleccionar productos de la tabla
+    chatBox.addEventListener('click', (e) => {
+        const row = e.target.closest('tr[data-product-name]');
+        if (row) {
+            const productName = row.dataset.productName;
+            const message = `Seleccioné este producto: ${productName}`;
+            handleSendMessage(message);
+        }
+    });
+
     // Mensaje inicial del asistente
-    try {
-        const initial = 'Bienvenido a UP-CONS, tu aliado en construccion. Como puedo ayudarte?';
-        addMessageEnhanced(initial, 'bot');
-    } catch {}
-
-
+    addMessage('Bienvenido a UP-CONS, tu aliado en construcción. ¿Cuál es tu nombre?', 'bot');
 });

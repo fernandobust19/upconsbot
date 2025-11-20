@@ -7,13 +7,27 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="chat-container">
-        <div id="chat-box">
-
+    <div id="main-container">
+        <div id="chat-container">
+            <div id="chat-header">
+                <h1>Asistente de Ventas</h1>
+            </div>
+            <div id="chat-box"></div>
+            <div id="input-container">
+                <input type="text" id="user-input" placeholder="Escribe tu pregunta...">
+                <button id="send-btn">Enviar</button>
+            </div>
         </div>
-        <div id="input-container">
-            <input type="text" id="user-input" placeholder="Escribe tu pregunta...">
-            <button id="send-btn">Enviar</button>
+        <div id="proforma-container">
+            <h2>Proforma Actual</h2>
+            <div id="proforma-items"></div>
+            <div id="proforma-total">
+                <strong>Total: $0.00</strong>
+            </div>
+            <div id="contact-info">
+                <p>Para finalizar tu compra, contáctanos:</p>
+                <a href="tel:0983801298" id="call-btn">Llamar al 0983801298</a>
+            </div>
         </div>
     </div>
     <script src="script.js"></script>

@@ -53,7 +53,7 @@ if (morgan) app.use(morgan('combined'));
 const COMPANY = {
   name: process.env.COMPANY_NAME || 'UP-CONS',
   address: process.env.COMPANY_ADDRESS || 'Av. Principal 123, Ciudad, País',
-  phone: process.env.COMPANY_PHONE || '+593999999999',
+  phone: process.env.COMPANY_PHONE || '0983801298',
   website: process.env.COMPANY_WEBSITE || 'https://upcons.example.com',
   branches: (process.env.COMPANY_BRANCHES || 'Matriz - Ciudad|Sucursal Norte - Ciudad|Sucursal Sur - Ciudad').split('|'),
 };

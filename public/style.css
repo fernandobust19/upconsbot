@@ -82,14 +82,16 @@ body {
 }
 
 #input-container {
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr auto;
     padding: 8px;
     gap: 8px;
     align-items: center;
 }
 
 #user-input {
-    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0; /* permite que el campo se encoja y deje espacio al boton */
     border: 1px solid #ccc;
     border-radius: 14px;
     padding: 8px 10px;

@@ -185,7 +185,7 @@ function getUserProfile(req) {
   const now = Date.now();
   const existing = userProfiles.get(key);
   if (existing && now - existing.updatedAt < USER_TTL_MS) return existing;
-  const fresh = { nombre: null, proforma: [], history: [], updatedAt: now };
+  const fresh = { nombre: null, proforma: [], history: [], pendingMaterialOptions: [], awaitingQuantityFor: null, updatedAt: now };
   userProfiles.set(key, fresh);
   return fresh;
 }
@@ -640,7 +640,7 @@ app.post('/chat', async (req, res) => {
     }
     // Si NO se detectó un nombre, verificamos si es un saludo simple para pedirlo.
     if (/^(hola|buenos dias|buenos días|buenas tardes|buenas noches)$/i.test(userMessage.trim())) {
-      return res.json({ reply: '¡Hola! Soy un asesor de ventas con inteligencia artificial. Para darte una atención más personalizada, ¿cuál es tu nombre?' });
+      return res.json({ reply: '¡Hola! Soy el asistente de ventas con inteligencia artificial. Para darte una atención más personalizada, ¿cuál es tu nombre?' });
     }
     // Si no es un saludo simple y no hay nombre, la conversación continúa para que la IA maneje la consulta.
   }
@@ -678,8 +678,12 @@ app.post('/chat', async (req, res) => {
     const proformaActualJson = JSON.stringify(profile.proforma);
 
     const telLink = `${COMPANY_TEL_LINK}`;
+    const setPendingMaterialOptions = (options = []) =>
+      updateUserProfile(req, { pendingMaterialOptions: options, awaitingQuantityFor: null });
+    const buildSelectableList = (options) =>
+      options.map((p, idx) => `${idx + 1}. ${p.nombre} - $${Number(p.precio || 0).toFixed(2)}`).join('\n');
     const systemPrompt = `
-Eres un asesor de ventas con inteligencia artificial de UP-CONS, con conocimientos de arquitectura e ingeniería. Tu tono es profesional, preciso y muy amable. Responde siempre en español.
+Eres el asistente de ventas con inteligencia artificial de UP-CONS, con conocimientos de arquitectura e ingeniería. Tu tono es profesional, preciso y muy amable. Responde siempre en español.
 ${nombreTexto}
 
 Tu objetivo principal es ser un GESTOR DE PROFORMAS. Ayuda al cliente a construir una cotización. El cliente puede agregar productos, ver la proforma, o quitar ítems.
@@ -705,11 +709,7 @@ Instrucciones de respuesta:
   - Si pide "empezar de nuevo" o "limpiar", vacía la proforma y confírmalo en la respuesta.
 - **Tono y Formato**: Sé siempre amable y halaga al cliente (ej. "¡Excelente elección!"). Usa saltos de línea (\n) para separar párrafos y antes de mostrar una tabla para que la respuesta no se vea amontonada.
  - **Formato de Tabla**: Cuando muestres la proforma o una lista de productos, SIEMPRE usa una tabla Markdown.
- - **Ofrecer Enlace a Proforma**: Cuando la proforma tenga productos, finaliza tu respuesta ofreciendo:
-   - Un enlace para verla en una página separada: "Puedes ver tu proforma detallada aquí: /proforma".
-   - Un enlace de descarga en PDF: "Descarga tu proforma aquí: /proforma.pdf".
-   - Un enlace de llamada directa para negociar la compra: "Puedes llamarnos aquí: ${telLink}".
- - **Cierre de Conversación**: Si el cliente indica que ya terminó, cierra con un resumen final, incluye ambos enlaces (ver y descargar proforma) y el enlace de llamada directa.
+ - **Cierre de Conversacion**: Si el cliente indica que ya termino, cierra con un resumen final e invita a llamar al cliente.
 
 Catálogo JSON (para grounding, no lo repitas completo):
 ${productsJson}
@@ -724,19 +724,27 @@ Ejemplo de formato de respuesta:
 }`;
 
     const fallbackReply = () => {
-      const base = productsForContext.length > 0 ? productsForContext : products;
-      if (base.length > 0) {
-        const top = base.slice(0, 5);
-        const lines = top
-          .map((p) => {
-            const img = getProductImageURL(p.nombre);
-            const tag = img ? `<img src="${img}" alt="${p.nombre}" style="height:48px;width:auto;vertical-align:middle;margin-right:6px;border-radius:3px;">` : '';
-            return `${tag}${p.nombre}: $${p.precio}`;
-          })
-          .join('\n');
-        return `Por ahora no puedo generar una respuesta avanzada, pero estas opciones están disponibles:\n\n${lines}\n\n¿Te interesa alguno? Puedes indicarme medida, calibre o cantidad.\n\nPuedes ver tu proforma aquí: /proforma\nDescarga tu proforma aquí: /proforma.pdf\nLlámanos: ${COMPANY_TEL_LINK}`;
+      const materialOptions = (foundProducts.length > 0 ? foundProducts : []).slice(0, 5);
+      const hasMaterialIntent =
+        materialOptions.length > 0 ||
+        /(material|planch|tubo|teja|lamin|lamina|perno|tornillo|malla|perfil|viga|canal)/i.test(userMessage);
+
+      if (hasMaterialIntent && materialOptions.length > 0) {
+        setPendingMaterialOptions(materialOptions);
+        const lines = buildSelectableList(materialOptions);
+        return `Por ahora no puedo generar una respuesta avanzada. Estas son las opciones que tengo para tu pedido:
+
+${lines}
+
+Elige el numero de la opcion y te pregunto cuantas unidades necesitas.`;
       }
-      return `No puedo acceder a la IA ni a la lista de productos por ahora. ¿Podrías decirme más detalles (producto, medida, cantidad, color)?\n\nLlámanos: ${COMPANY_TEL_LINK}`;
+
+      setPendingMaterialOptions([]);
+      if (hasMaterialIntent) {
+        return 'Por ahora no puedo generar una respuesta avanzada. Dame un poco mas de detalle del material (medida o espesor) y te muestro lo que tenemos.';
+      }
+
+      return 'Soy el asistente de ventas. Dime que material necesitas (planchas, tubos, tejas, etc.) y te ayudo a cotizarlo.';
     };
 
     // --- Intentos locales para no depender de IA ---
@@ -756,22 +764,58 @@ Ejemplo de formato de respuesta:
 
     const renderAndReturn = (leadText) => {
       const { table, total } = formatProformaMarkdown(getUserProfile(req).proforma);
-      const tailLinks = `\n\nPuedes ver tu proforma detallada aquí: /proforma\nDescarga tu proforma aquí: /proforma?download=1\nPuedes llamarnos aquí: ${COMPANY_TEL_LINK}`;
-      return res.json({ reply: `${leadText}\n\n${table}\n\nTotal: $${total.toFixed(2)}${tailLinks}` });
+      return res.json({ reply: `${leadText}
+
+${table}
+
+Total: $${total.toFixed(2)}
+Necesitas agregar algo mas?` });
     };
+
 
     if (resetIntent) {
       const keepName = getUserProfile(req).nombre;
-      updateUserProfile(req, { nombre: keepName || null, proforma: [], history: [] });
-      return res.json({ reply: 'Listo, reinicié la conversación y vacié tu proforma. Cuéntame qué necesitas cotizar ahora.' });
+      updateUserProfile(req, { nombre: keepName || null, proforma: [], history: [], pendingMaterialOptions: [], awaitingQuantityFor: null });
+      return res.json({ reply: 'Listo, reinicie la conversacion y vacie tu proforma. Cuentame que necesitas cotizar ahora.' });
     }
+
 
     if (wantsView) {
       if (!profile.proforma?.length) {
-        return res.json({ reply: 'Aún no has agregado productos. ¿Qué deseas cotizar?' });
+        return res.json({ reply: 'Aun no has agregado productos. Que deseas cotizar?' });
       }
-      return renderAndReturn('Aquí tienes tu proforma actual:');
+      return renderAndReturn('Aqui tienes tu proforma actual:');
     }
+
+    const awaitingItem = getUserProfile(req).awaitingQuantityFor;
+    if (awaitingItem) {
+      const qtyFromMsg = extractQuantityFromMessage(userMessage) || parseInt(String(userMessage).trim(), 10);
+      if (!qtyFromMsg || Number.isNaN(qtyFromMsg)) {
+        return res.json({ reply: `Cuantas unidades necesitas de ${awaitingItem.nombre}?` });
+      }
+
+      const price = ensureOfficialPrice(awaitingItem.nombre) ?? awaitingItem.precio ?? 0;
+      const current = getUserProfile(req).proforma || [];
+      const idx = current.findIndex((it) => it.nombre === awaitingItem.nombre);
+      if (idx >= 0) current[idx].cantidad = Number(current[idx].cantidad || 0) + qtyFromMsg;
+      else current.push({ nombre: awaitingItem.nombre, cantidad: qtyFromMsg, precio });
+      const newHistory = [...conversationHistory, { role: 'user', content: userMessage }];
+      updateUserProfile(req, { proforma: current, awaitingQuantityFor: null, pendingMaterialOptions: [], history: newHistory });
+      return renderAndReturn(`Agregue ${qtyFromMsg} de ${awaitingItem.nombre} a tu proforma.`);
+    }
+
+    const pendingOptions = Array.isArray(getUserProfile(req).pendingMaterialOptions)
+      ? getUserProfile(req).pendingMaterialOptions
+      : [];
+    const selectionMatch = String(userMessage).trim().match(/^(?:opcion\s*)?(\d{1,2})$/i);
+    if (pendingOptions.length && selectionMatch) {
+      const chosen = pendingOptions[parseInt(selectionMatch[1], 10) - 1];
+      if (chosen) {
+        updateUserProfile(req, { awaitingQuantityFor: chosen, pendingMaterialOptions: [] });
+        return res.json({ reply: `Perfecto, seleccionaste ${chosen.nombre}. Cuantas unidades necesitas?` });
+      }
+    }
+
 
     // Operaciones de agregar
     // if (addIntent && quantity) {
@@ -960,5 +1004,5 @@ Ejemplo de formato de respuesta:
 });
 
 app.listen(port, () => {
-  console.log(`Servidor del bot escuchando en http://localhost:${port}`);
+  console.log(`Servidor del asistente escuchando en http://localhost:${port}`);
 });

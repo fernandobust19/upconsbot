@@ -136,8 +136,15 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Error en la respuesta del servidor.');
+                const contentType = response.headers.get("content-type");
+                let errorText = `Error del servidor: ${response.status}`;
+                if (contentType && contentType.indexOf("application/json") !== -1) {
+                    const errorData = await response.json();
+                    errorText = errorData.error || JSON.stringify(errorData);
+                } else {
+                    errorText = await response.text();
+                }
+                throw new Error(errorText);
             }
 
             const data = await response.json();
@@ -154,6 +161,12 @@ document.addEventListener('DOMContentLoaded', () => {
             // Actualizar la vista de la proforma con los datos del servidor
             if (data.proforma) {
                 updateProforma(data.proforma);
+            }
+
+            if (data.awaitingQuantity) {
+                userInput.placeholder = 'Escribe la cantidad (ej: 5)';
+            } else {
+                userInput.placeholder = 'Escribe tu pregunta...';
             }
 
         } catch (error) {
@@ -174,9 +187,11 @@ document.addEventListener('DOMContentLoaded', () => {
     chatBox.addEventListener('click', (e) => {
         const row = e.target.closest('tr[data-product-name]');
         if (row) {
-            const productName = row.dataset.productName;
-            const message = `Seleccioné este producto: ${productName}`;
+            const idx = Array.from(row.parentElement.children).indexOf(row) + 1;
+            const message = String(idx); // enviar número de opción
+            userInput.value = '';
             handleSendMessage(message);
+            setTimeout(() => userInput.focus(), 50);
         }
     });
 

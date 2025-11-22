@@ -800,7 +800,7 @@ Necesitas agregar algo mas?` });
     if (awaitingItem) {
       const qtyFromMsg = extractQuantityFromMessage(userMessage) || parseInt(String(userMessage).trim(), 10);
       if (!qtyFromMsg || Number.isNaN(qtyFromMsg)) {
-        return res.json({ reply: `Cuantas unidades necesitas de ${awaitingItem.nombre}?` });
+        return res.json({ reply: `¿Cuántas unidades necesitas de ${awaitingItem.nombre}?`, proforma: getUserProfile(req).proforma, awaitingQuantity: true });
       }
 
       const price = ensureOfficialPrice(awaitingItem.nombre) ?? awaitingItem.precio ?? 0;
@@ -810,7 +810,12 @@ Necesitas agregar algo mas?` });
       else current.push({ nombre: awaitingItem.nombre, cantidad: qtyFromMsg, precio });
       const newHistory = [...conversationHistory, { role: 'user', content: userMessage }];
       updateUserProfile(req, { proforma: current, awaitingQuantityFor: null, pendingMaterialOptions: [], history: newHistory });
-      return renderAndReturn(`Agregue ${qtyFromMsg} de ${awaitingItem.nombre} a tu proforma.`);
+      const { table, total } = formatProformaMarkdown(current);
+      return res.json({
+        reply: `Agregué ${qtyFromMsg} de ${awaitingItem.nombre} a tu proforma.\n\n${table}\n\nTotal: $${total.toFixed(2)}\n¿Algo más?`,
+        proforma: current,
+        awaitingQuantity: false
+      });
     }
 
     const pendingOptions = Array.isArray(getUserProfile(req).pendingMaterialOptions)
@@ -826,85 +831,104 @@ Necesitas agregar algo mas?` });
     }
 
 
-    // Operaciones de agregar
-    // if (addIntent && quantity) {
-    //   const { dims, thicknessMm } = order;
-    //   const requestedType = detectTubeTypeFromMessage(userMessage);
-    //   const inferredType = inferTubeTypeFromDims(dims);
-    //   const finalType = requestedType || inferredType;
+    // Operaciones de agregar (local, antes de IA)
+    if (addIntent) {
+      const { dims, thicknessMm } = order;
+      const requestedType = detectTubeTypeFromMessage(userMessage);
+      const inferredType = inferTubeTypeFromDims(dims);
+      const finalType = requestedType || inferredType;
 
-    //   // Si se trata de tubos y hay ambigüedad en el tipo, preguntar
-    //   const mentionsTube = /\btubo\b/i.test(userMessage) || requestedType || inferredType;
-    //   if (mentionsTube && !finalType) {
-    //     return res.json({ reply: '¿Qué tipo de tubo necesitas: cuadrado, rectangular o redondo?' });
-    //   }
+      const mentionsTube = /\btubo\b/i.test(userMessage) || requestedType || inferredType;
 
-    //   // Si hay contradicción entre dimensiones y tipo pedido, confirmar
-    //   if (requestedType && inferredType && requestedType !== inferredType) {
-    //     return res.json({ reply: `Mencionas la medida ${dims[0]}x${dims[1]}, que suele ser ${inferredType}. ¿Confirmas que lo quieres ${requestedType} o mejor ${inferredType}?` });
-    //   }
+      // Si se trata de tubos y no tenemos tipo, pedirlo
+      if (mentionsTube && !finalType) {
+        return res.json({ reply: '¿Qué tipo de tubo necesitas: cuadrado, rectangular o redondo?', proforma: profile.proforma, awaitingQuantity: false });
+      }
 
-    //   // Intentar candidatos de tubo si aplica
-    //   let best = null;
-    //   if (mentionsTube && finalType) {
-    //     let candidates = filterTubeCandidates(products, dims, finalType);
+      // Contradicción en tipo/dimensiones
+      if (requestedType && inferredType && requestedType !== inferredType) {
+        return res.json({ reply: `Mencionas ${dims[0]}x${dims[1]}, suele ser ${inferredType}. ¿Lo quieres ${requestedType} o mejor ${inferredType}?`, proforma: profile.proforma, awaitingQuantity: false });
+      }
 
-    //     if (candidates.length === 0 && dims) {
-    //       // Si no hay coincidencia exacta, intentar invertir dims (por si catálogo usa otro orden) p.ej 50x100 vs 100x50
-    //       const invCandidates = filterTubeCandidates(products, [dims[1], dims[0]], finalType);
-    //       if (invCandidates.length > 0) candidates = invCandidates;
-    //     }
+      let best = null;
+      if (mentionsTube && finalType) {
+        let candidates = filterTubeCandidates(products, dims, finalType);
 
-    //     if (candidates.length > 0) {
-    //       // Selección por espesor
-    //       if (thicknessMm) {
-    //         const tStr = `${thicknessMm}mm`;
-    //         const byThick = candidates.filter((c) => productText(c).includes(tStr));
-    //         if (byThick.length > 0) candidates = byThick;
-    //       } else {
-    //         // Si faltó espesor y hay múltiples opciones, preguntar opciones
-    //         const options = Array.from(new Set(candidates.map((c) => extractThicknessFromName(c.nombre)).filter(Boolean)));
-    //         if (options.length > 1) {
-    //           return res.json({ reply: `¿Qué espesor prefieres para ${dims ? dims.join('x') : 'el tubo'} ${finalType}? Opciones: ${options.join(', ')}.` });
-    //         }
-    //       }
+        // Intentar invertir dims si no hay match exacto
+        if (candidates.length === 0 && dims) {
+          const invCandidates = filterTubeCandidates(products, [dims[1], dims[0]], finalType);
+          if (invCandidates.length > 0) candidates = invCandidates;
+        }
 
-    //       // Preferir calidad solicitada o 'primera'
-    //       const qPref = qualityPreferenceFromMessage(userMessage) || 'primera';
-    //       const byQuality = candidates.filter((c) => new RegExp(`\\b${qPref}\\b`, 'i').test(c.nombre));
-    //       if (byQuality.length > 0) candidates = byQuality;
+        // Filtrar por espesor si se pidió
+        if (candidates.length > 0 && thicknessMm) {
+          const tStr = `${thicknessMm}mm`;
+          const byThick = candidates.filter((c) => productText(c).includes(tStr));
+          if (byThick.length > 0) candidates = byThick;
+        } else if (candidates.length > 1 && !thicknessMm) {
+          const options = Array.from(new Set(candidates.map((c) => extractThicknessFromName(c.nombre)).filter(Boolean)));
+          if (options.length > 1) {
+            return res.json({ reply: `¿Qué espesor prefieres para ${dims ? dims.join('x') : 'el tubo'} ${finalType}? Opciones: ${options.join(', ')}.`, proforma: profile.proforma, awaitingQuantity: false });
+          }
+        }
 
-    //       // Si quedan múltiples, usar mayor score por tokens generales
-    //       best = candidates.reduce((acc, cur) => {
-    //         const score = expandQueryTokens(userMessage).reduce((s, t) => s + (productText(cur).includes(t) ? 1 : 0), 0);
-    //         return !acc || score > acc.score ? { item: cur, score } : acc;
-    //       }, null)?.item;
-    //     }
-    //   }
+        // Calidad preferida o primera
+        const qPref = qualityPreferenceFromMessage(userMessage) || 'primera';
+        const byQuality = candidates.filter((c) => new RegExp(`\\b${qPref}\\b`, 'i').test(c.nombre));
+        if (byQuality.length > 0) candidates = byQuality;
 
-    //   // Fallback a búsqueda general si no hubo candidato de tubos
-    //   if (!best) best = findBestProductByMessage(userMessage, products);
+        // Mejor puntaje
+        best = candidates.reduce((acc, cur) => {
+          const score = expandQueryTokens(userMessage).reduce((s, t) => s + (productText(cur).includes(t) ? 1 : 0), 0);
+          return !acc || score > acc.score ? { item: cur, score } : acc;
+        }, null)?.item;
+      }
 
-    //   if (best) {
-    //     const price = ensureOfficialPrice(best.nombre) ?? best.precio ?? 0;
-    //     const current = getUserProfile(req).proforma || [];
-    //     const idx = current.findIndex((it) => it.nombre === best.nombre);
-    //     if (idx >= 0) current[idx].cantidad = Number(current[idx].cantidad || 0) + quantity;
-    //     else current.push({ nombre: best.nombre, cantidad: quantity, precio: price });
-    //     updateUserProfile(req, { proforma: current, history: [...conversationHistory, { role: 'user', content: userMessage }] });
+      if (!best) best = findBestProductByMessage(userMessage, products);
 
-    //     // Si es teja española, ofrecer ver la imagen antes/después de agregar
-    //     let extraPreview = '';
-    //     if (/\bteja\b/i.test(best.nombre)) {
-    //       const imgUrl = getProductImageURL(best.nombre) || getProductImageURL('teja espanola');
-    //       if (imgUrl) {
-    //         extraPreview = `\n\nVista: <a href="${imgUrl}" target="_blank">Ver imagen</a>`;
-    //       }
-    //     }
+      // Si hay varias coincidencias, ofrecer opciones
+      if (!best && products.length) {
+        const scored = products
+          .map((p) => ({ p, s: expandQueryTokens(userMessage).reduce((s, t) => s + (productText(p).includes(t) ? 1 : 0), 0) }))
+          .filter((x) => x.s > 0)
+          .sort((a, b) => b.s - a.s)
+          .slice(0, 5)
+          .map((x) => x.p);
+        if (scored.length > 1) {
+          updateUserProfile(req, { pendingMaterialOptions: scored, awaitingQuantityFor: null });
+          const lines = scored.map((p, i) => `${i + 1}. ${p.nombre} - $${Number(p.precio || 0).toFixed(2)}`).join('\n');
+          return res.json({ reply: `Tengo estas opciones:\n\n${lines}\n\nEscribe el número de la opción.`, proforma: profile.proforma, awaitingQuantity: false });
+        }
+      }
 
-    //     return renderAndReturn(`¡Excelente elección! He añadido ${quantity} de ${best.nombre} a tu proforma.${extraPreview}`);
-    //   }
-    // }
+      if (best && quantity) {
+        const price = ensureOfficialPrice(best.nombre) ?? best.precio ?? 0;
+        const current = getUserProfile(req).proforma || [];
+        const idx = current.findIndex((it) => it.nombre === best.nombre);
+        if (idx >= 0) current[idx].cantidad = Number(current[idx].cantidad || 0) + quantity;
+        else current.push({ nombre: best.nombre, cantidad: quantity, precio: price });
+        updateUserProfile(req, { proforma: current, history: [...conversationHistory, { role: 'user', content: userMessage }] });
+
+        let extraPreview = '';
+        if (/\bteja\b/i.test(best.nombre)) {
+          const imgUrl = getProductImageURL(best.nombre) || getProductImageURL('teja espanola');
+          if (imgUrl) extraPreview = `\n\nVista: &lt;a href="${imgUrl}" target="_blank"&gt;Ver imagen&lt;/a&gt;`;
+        }
+
+        const { table, total } = formatProformaMarkdown(current);
+        return res.json({
+          reply: `¡Excelente elección! He añadido ${quantity} de ${best.nombre} a tu proforma.${extraPreview}\n\n${table}\n\nTotal: $${total.toFixed(2)}\n¿Algo más?`,
+          proforma: current,
+          awaitingQuantity: false
+        });
+      }
+
+      // Si solo hay un candidato claro pero sin cantidad: pedir cantidad
+      if (best && !quantity) {
+        updateUserProfile(req, { awaitingQuantityFor: best, pendingMaterialOptions: [] });
+        return res.json({ reply: `Tengo ${best.nombre}. ¿Cuántas unidades necesitas?`, proforma: profile.proforma, awaitingQuantity: true });
+      }
+    }
 
     // Operaciones de quitar (con cantidad específica)
     if (removeIntent) {

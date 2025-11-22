@@ -613,76 +613,77 @@ async function validarYExtraerNombre(textoUsuario) {
 // Chat principal
 // ------------------
 app.post('/chat', async (req, res) => {
-  const userMessage = req.body?.message;
-  if (!userMessage || typeof userMessage !== 'string') {
-    return res.status(400).json({ error: 'El mensaje no puede estar vacío.' });
-  }
-
-  const isValidOpenAIKey = (key) => typeof key === 'string' && key.startsWith('sk-') && key.length > 25;
-  const hasOpenAI = isValidOpenAIKey(process.env.OPENAI_API_KEY);
-
-  const profile = getUserProfile(req);
-  // Limitar el historial a los últimos 10 intercambios (user + bot) para no exceder el contexto
-  const conversationHistory = profile.history?.slice(-10) || [];
-
-
-  // --- Lógica de captura de nombre REESTRUCTURADA ---
-  if (!profile.nombre) { // Solo se ejecuta si no conocemos el nombre del usuario.
-    if (hasOpenAI) {
-      const nombreDetectado = await validarYExtraerNombre(userMessage);
-      if (nombreDetectado) {
-        // Si la IA detecta un nombre, lo guardamos y saludamos.
-        const reply = `¡Excelente, ${nombreDetectado}! Un gusto. Puedo ayudarte a crear una proforma. ¿Qué materiales necesitas?`;
-        const newHistory = [...conversationHistory, { role: 'user', content: userMessage }, { role: 'assistant', content: reply }];
-        updateUserProfile(req, { nombre: nombreDetectado, history: newHistory });
-        return res.json({ reply: reply });
-      }
-    }
-    // Si NO se detectó un nombre, verificamos si es un saludo simple para pedirlo.
-    if (/^(hola|buenos dias|buenos días|buenas tardes|buenas noches)$/i.test(userMessage.trim())) {
-      return res.json({ reply: '¡Hola! Soy el asistente de ventas con inteligencia artificial. Para darte una atención más personalizada, ¿cuál es tu nombre?' });
-    }
-    // Si no es un saludo simple y no hay nombre, la conversación continúa para que la IA maneje la consulta.
-  }
-
   try {
-    const products = await getProducts();
-    let foundProducts = [];
-
-    // Búsqueda mejorada con correcciones, sinónimos y scoring parcial
-    const tokens = expandQueryTokens(userMessage);
-    if (tokens.length >= 1 && products.length > 0) {
-      const scored = products.map((p) => {
-        const haystack = productText(p);
-        let score = 0;
-        for (const t of tokens) {
-          if (haystack.includes(t)) score += 1;
-        }
-        return { p, score };
-      });
-      // Mantener solo coincidencias relevantes (score >= 1) y ordenar por score desc
-      foundProducts = scored
-        .filter((x) => x.score >= 1)
-        .sort((a, b) => b.score - a.score)
-        .map((x) => x.p);
+    const userMessage = req.body?.message;
+    if (!userMessage || typeof userMessage !== 'string') {
+      return res.status(400).json({ error: 'El mensaje no puede estar vacío.' });
     }
 
-    // Usamos los productos encontrados en la búsqueda local o el catálogo completo si no hay coincidencias.
-    const productsForContext = foundProducts.length > 0 ? foundProducts : products;
-    const productsJson = JSON.stringify(productsForContext.slice(0, 50)); // Limitar para no exceder el contexto
+    const isValidOpenAIKey = (key) => typeof key === 'string' && key.startsWith('sk-') && key.length > 25;
+    const hasOpenAI = isValidOpenAIKey(process.env.OPENAI_API_KEY);
 
-    const nombreTexto = profile.nombre
-      ? `Hablas con ${profile.nombre}, un cliente interesado en materiales de construcción.`
-      : '';
-    
-    const proformaActualJson = JSON.stringify(profile.proforma);
+    const profile = getUserProfile(req);
+    // Limitar el historial a los últimos 10 intercambios (user + bot) para no exceder el contexto
+    const conversationHistory = profile.history?.slice(-10) || [];
 
-    const telLink = `${COMPANY_TEL_LINK}`;
-    const setPendingMaterialOptions = (options = []) =>
-      updateUserProfile(req, { pendingMaterialOptions: options, awaitingQuantityFor: null });
-    const buildSelectableList = (options) =>
-      options.map((p, idx) => `${idx + 1}. ${p.nombre} - $${Number(p.precio || 0).toFixed(2)}`).join('\n');
-    const systemPrompt = `
+
+    // --- Lógica de captura de nombre REESTRUCTURADA ---
+    if (!profile.nombre) { // Solo se ejecuta si no conocemos el nombre del usuario.
+      if (hasOpenAI) {
+        const nombreDetectado = await validarYExtraerNombre(userMessage);
+        if (nombreDetectado) {
+          // Si la IA detecta un nombre, lo guardamos y saludamos.
+          const reply = `¡Excelente, ${nombreDetectado}! Un gusto. Puedo ayudarte a crear una proforma. ¿Qué materiales necesitas?`;
+          const newHistory = [...conversationHistory, { role: 'user', content: userMessage }, { role: 'assistant', content: reply }];
+          updateUserProfile(req, { nombre: nombreDetectado, history: newHistory });
+          return res.json({ reply: reply });
+        }
+      }
+      // Si NO se detectó un nombre, verificamos si es un saludo simple para pedirlo.
+      if (/^(hola|buenos dias|buenos días|buenas tardes|buenas noches)$/i.test(userMessage.trim())) {
+        return res.json({ reply: '¡Hola! Soy el asistente de ventas con inteligencia artificial. Para darte una atención más personalizada, ¿cuál es tu nombre?' });
+      }
+      // Si no es un saludo simple y no hay nombre, la conversación continúa para que la IA maneje la consulta.
+    }
+
+    try {
+      const products = await getProducts();
+      let foundProducts = [];
+
+      // Búsqueda mejorada con correcciones, sinónimos y scoring parcial
+      const tokens = expandQueryTokens(userMessage);
+      if (tokens.length >= 1 && products.length > 0) {
+        const scored = products.map((p) => {
+          const haystack = productText(p);
+          let score = 0;
+          for (const t of tokens) {
+            if (haystack.includes(t)) score += 1;
+          }
+          return { p, score };
+        });
+        // Mantener solo coincidencias relevantes (score >= 1) y ordenar por score desc
+        foundProducts = scored
+          .filter((x) => x.score >= 1)
+          .sort((a, b) => b.score - a.score)
+          .map((x) => x.p);
+      }
+
+      // Usamos los productos encontrados en la búsqueda local o el catálogo completo si no hay coincidencias.
+      const productsForContext = foundProducts.length > 0 ? foundProducts : products;
+      const productsJson = JSON.stringify(productsForContext.slice(0, 50)); // Limitar para no exceder el contexto
+
+      const nombreTexto = profile.nombre
+        ? `Hablas con ${profile.nombre}, un cliente interesado en materiales de construcción.`
+        : '';
+      
+      const proformaActualJson = JSON.stringify(profile.proforma);
+
+      const telLink = `${COMPANY_TEL_LINK}`;
+      const setPendingMaterialOptions = (options = []) =>
+        updateUserProfile(req, { pendingMaterialOptions: options, awaitingQuantityFor: null });
+      const buildSelectableList = (options) =>
+        options.map((p, idx) => `${idx + 1}. ${p.nombre} - $${Number(p.precio || 0).toFixed(2)}`).join('\n');
+      const systemPrompt = `
 Eres el asistente de ventas con inteligencia artificial de UP-CONS, con conocimientos de arquitectura e ingeniería. Tu personalidad es clave:
 - **Tono y Trato**: Habla siempre con respeto, usando "usted". Tu tono debe ser amable, educado, cordial, servicial, claro, alegre y confiable. Suenas como un vendedor profesional ecuatoriano, pero con un trato natural y cercano. Utiliza frases como "Con gusto le ayudo", "A la orden", "Será un gusto asistirle", "Estoy para servirle".
 - **Humor**: Tu humor es muy suave, elegante y nunca vulgar.
@@ -732,307 +733,315 @@ Ejemplo de formato de respuesta:
   ]
 }`;
 
-    const fallbackReply = () => {
-      const materialOptions = (foundProducts.length > 0 ? foundProducts : []).slice(0, 5);
-      const hasMaterialIntent =
-        materialOptions.length > 0 ||
-        /(material|planch|tubo|teja|lamin|lamina|perno|tornillo|malla|perfil|viga|canal)/i.test(userMessage);
+      const fallbackReply = () => {
+        const materialOptions = (foundProducts.length > 0 ? foundProducts : []).slice(0, 5);
+        const hasMaterialIntent =
+          materialOptions.length > 0 ||
+          /(material|planch|tubo|teja|lamin|lamina|perno|tornillo|malla|perfil|viga|canal)/i.test(userMessage);
 
-      if (hasMaterialIntent && materialOptions.length > 0) {
-        setPendingMaterialOptions(materialOptions);
-        const lines = buildSelectableList(materialOptions);
-        return `Por ahora no puedo generar una respuesta avanzada. Estas son las opciones que tengo para tu pedido:
+        if (hasMaterialIntent && materialOptions.length > 0) {
+          setPendingMaterialOptions(materialOptions);
+          const lines = buildSelectableList(materialOptions);
+          return `Por ahora no puedo generar una respuesta avanzada. Estas son las opciones que tengo para tu pedido:
 
 ${lines}
 
 Elige el numero de la opcion y te pregunto cuantas unidades necesitas.`;
-      }
+        }
 
-      setPendingMaterialOptions([]);
-      if (hasMaterialIntent) {
-        return 'Por ahora no puedo generar una respuesta avanzada. Dame un poco mas de detalle del material (medida o espesor) y te muestro lo que tenemos.';
-      }
+        setPendingMaterialOptions([]);
+        if (hasMaterialIntent) {
+          return 'Por ahora no puedo generar una respuesta avanzada. Dame un poco mas de detalle del material (medida o espesor) y te muestro lo que tenemos.';
+        }
 
-      return 'Soy el asistente de ventas. Dime que material necesitas (planchas, tubos, tejas, etc.) y te ayudo a cotizarlo.';
-    };
+        return 'Soy el asistente de ventas. Dime que material necesitas (planchas, tubos, tejas, etc.) y te ayudo a cotizarlo.';
+      };
 
-    // --- Intentos locales para no depender de IA ---
-    const msg = userMessage.toLowerCase();
-    const wantsView = /(\bver (mi )?proforma\b|\bc(?:o|ó)mo va la cuenta\b|\bmi proforma\b)/i.test(userMessage);
-    const addIntent = /(agrega|añade|añadir|sumar|pon|poner|quiero|comprar|deme|dame|necesito)/i.test(userMessage);
-    const removeIntent = /(quita|elimina|remueve|borra)/i.test(userMessage);
-    const resetIntent = /(borrar todo|borra todo|elimina todo|quitar todo|limpia todo|vacía todo|vaciar todo|empezar de nuevo|empezar de cero|reinicia|reiniciar|reset)/i.test(msg);
-    const updateIntent = /(ajusta|cambia|actualiza|solo|deja)/i.test(userMessage);
-    const order = parseOrderInfo(userMessage);
-    const quantity = order.quantity;
+      // --- Intentos locales para no depender de IA ---
+      const msg = userMessage.toLowerCase();
+      const wantsView = /(\bver (mi )?proforma\b|\bc(?:o|ó)mo va la cuenta\b|\bmi proforma\b)/i.test(userMessage);
+      const addIntent = /(agrega|añade|añadir|sumar|pon|poner|quiero|comprar|deme|dame|necesito)/i.test(userMessage);
+      const removeIntent = /(quita|elimina|remueve|borra)/i.test(userMessage);
+      const resetIntent = /(borrar todo|borra todo|elimina todo|quitar todo|limpia todo|vacía todo|vaciar todo|empezar de nuevo|empezar de cero|reinicia|reiniciar|reset)/i.test(msg);
+      const updateIntent = /(ajusta|cambia|actualiza|solo|deja)/i.test(userMessage);
+      const order = parseOrderInfo(userMessage);
+      const quantity = order.quantity;
 
-    const ensureOfficialPrice = (name) => {
-      const map = new Map(products.map((p) => [p.nombre, p.precio]));
-      return map.get(name);
-    };
+      const ensureOfficialPrice = (name) => {
+        const map = new Map(products.map((p) => [p.nombre, p.precio]));
+        return map.get(name);
+      };
 
-    const renderAndReturn = (leadText) => {
-      const { table, total } = formatProformaMarkdown(getUserProfile(req).proforma);
-      return res.json({ reply: `${leadText}
+      const renderAndReturn = (leadText) => {
+        const { table, total } = formatProformaMarkdown(getUserProfile(req).proforma);
+        return res.json({ reply: `${leadText}
 
 ${table}
 
 Total: $${total.toFixed(2)}
 Necesitas agregar algo mas?`, awaitingQuantity: false });
-    };
+      };
 
 
-    if (resetIntent) {
-      const keepName = getUserProfile(req).nombre;
-      updateUserProfile(req, { nombre: keepName || null, proforma: [], history: [], pendingMaterialOptions: [], awaitingQuantityFor: null });
-      return res.json({ reply: 'Listo, reinicie la conversacion y vacie tu proforma. Cuentame que necesitas cotizar ahora.', awaitingQuantity: false });
-    }
-
-
-    if (wantsView) {
-      if (!profile.proforma?.length) {
-        return res.json({ reply: 'Aun no has agregado productos. Que deseas cotizar?', awaitingQuantity: false });
-      }
-      return renderAndReturn('Aqui tienes tu proforma actual:');
-    }
-
-    const awaitingItem = getUserProfile(req).awaitingQuantityFor;
-    if (awaitingItem) {
-      const qtyFromMsg = extractQuantityFromMessage(userMessage) || parseInt(String(userMessage).trim(), 10);
-      if (!qtyFromMsg || Number.isNaN(qtyFromMsg)) {
-        return res.json({ reply: `¿Cuántas unidades necesitas de ${awaitingItem.nombre}?`, proforma: getUserProfile(req).proforma, awaitingQuantity: true });
+      if (resetIntent) {
+        const keepName = getUserProfile(req).nombre;
+        updateUserProfile(req, { nombre: keepName || null, proforma: [], history: [], pendingMaterialOptions: [], awaitingQuantityFor: null });
+        return res.json({ reply: 'Listo, reinicie la conversacion y vacie tu proforma. Cuentame que necesitas cotizar ahora.', awaitingQuantity: false });
       }
 
-      const price = ensureOfficialPrice(awaitingItem.nombre) ?? awaitingItem.precio ?? 0;
-      const current = getUserProfile(req).proforma || [];
-      const idx = current.findIndex((it) => it.nombre === awaitingItem.nombre);
-      if (idx >= 0) current[idx].cantidad = Number(current[idx].cantidad || 0) + qtyFromMsg;
-      else current.push({ nombre: awaitingItem.nombre, cantidad: qtyFromMsg, precio });
-      const newHistory = [...conversationHistory, { role: 'user', content: userMessage }];
-      updateUserProfile(req, { proforma: current, awaitingQuantityFor: null, pendingMaterialOptions: [], history: newHistory });
-      const { table, total } = formatProformaMarkdown(current);
-      return res.json({
-        reply: `Agregué ${qtyFromMsg} de ${awaitingItem.nombre} a tu proforma.\n\n${table}\n\nTotal: $${total.toFixed(2)}\n¿Algo más?`,
-        proforma: current,
-        awaitingQuantity: false
-      });
-    }
 
-    const pendingOptions = Array.isArray(getUserProfile(req).pendingMaterialOptions)
-      ? getUserProfile(req).pendingMaterialOptions
-      : [];
-    const selectionMatch = String(userMessage).trim().match(/^(?:opcion\s*)?(\d{1,2})$/i);
-    if (pendingOptions.length && selectionMatch) {
-      const chosen = pendingOptions[parseInt(selectionMatch[1], 10) - 1];
-      if (chosen) {
-        updateUserProfile(req, { awaitingQuantityFor: chosen, pendingMaterialOptions: [] });
-        return res.json({ reply: `Perfecto, seleccionaste ${chosen.nombre}. Cuantas unidades necesitas?` });
-      }
-    }
-
-
-    // Operaciones de agregar (local, antes de IA)
-    if (addIntent) {
-      const { dims, thicknessMm } = order;
-      const requestedType = detectTubeTypeFromMessage(userMessage);
-      const inferredType = inferTubeTypeFromDims(dims);
-      const finalType = requestedType || inferredType;
-
-      const mentionsTube = /\btubo\b/i.test(userMessage) || requestedType || inferredType;
-
-      // Si se trata de tubos y no tenemos tipo, pedirlo
-      if (mentionsTube && !finalType) {
-        return res.json({ reply: '¿Qué tipo de tubo necesitas: cuadrado, rectangular o redondo?', proforma: profile.proforma, awaitingQuantity: false });
+      if (wantsView) {
+        if (!profile.proforma?.length) {
+          return res.json({ reply: 'Aun no has agregado productos. Que deseas cotizar?', awaitingQuantity: false });
+        }
+        return renderAndReturn('Aqui tienes tu proforma actual:');
       }
 
-      // Contradicción en tipo/dimensiones
-      if (requestedType && inferredType && requestedType !== inferredType) {
-        return res.json({ reply: `Mencionas ${dims[0]}x${dims[1]}, suele ser ${inferredType}. ¿Lo quieres ${requestedType} o mejor ${inferredType}?`, proforma: profile.proforma, awaitingQuantity: false });
-      }
-
-      let best = null;
-      if (mentionsTube && finalType) {
-        let candidates = filterTubeCandidates(products, dims, finalType);
-
-        // Intentar invertir dims si no hay match exacto
-        if (candidates.length === 0 && dims) {
-          const invCandidates = filterTubeCandidates(products, [dims[1], dims[0]], finalType);
-          if (invCandidates.length > 0) candidates = invCandidates;
+      const awaitingItem = getUserProfile(req).awaitingQuantityFor;
+      if (awaitingItem) {
+        const qtyFromMsg = extractQuantityFromMessage(userMessage) || parseInt(String(userMessage).trim(), 10);
+        if (!qtyFromMsg || Number.isNaN(qtyFromMsg)) {
+          return res.json({ reply: `¿Cuántas unidades necesitas de ${awaitingItem.nombre}?`, proforma: getUserProfile(req).proforma, awaitingQuantity: true });
         }
 
-        // Filtrar por espesor si se pidió
-        if (candidates.length > 0 && thicknessMm) {
-          const tStr = `${thicknessMm}mm`;
-          const byThick = candidates.filter((c) => productText(c).includes(tStr));
-          if (byThick.length > 0) candidates = byThick;
-        } else if (candidates.length > 1 && !thicknessMm) {
-          const options = Array.from(new Set(candidates.map((c) => extractThicknessFromName(c.nombre)).filter(Boolean)));
-          if (options.length > 1) {
-            return res.json({ reply: `¿Qué espesor prefieres para ${dims ? dims.join('x') : 'el tubo'} ${finalType}? Opciones: ${options.join(', ')}.`, proforma: profile.proforma, awaitingQuantity: false });
-          }
-        }
-
-        // Calidad preferida o primera
-        const qPref = qualityPreferenceFromMessage(userMessage) || 'primera';
-        const byQuality = candidates.filter((c) => new RegExp(`\\b${qPref}\\b`, 'i').test(c.nombre));
-        if (byQuality.length > 0) candidates = byQuality;
-
-        // Mejor puntaje
-        best = candidates.reduce((acc, cur) => {
-          const score = expandQueryTokens(userMessage).reduce((s, t) => s + (productText(cur).includes(t) ? 1 : 0), 0);
-          return !acc || score > acc.score ? { item: cur, score } : acc;
-        }, null)?.item;
-      }
-
-      if (!best) best = findBestProductByMessage(userMessage, products);
-
-      // Si hay varias coincidencias, ofrecer opciones
-      if (!best && products.length) {
-        const scored = products
-          .map((p) => ({ p, s: expandQueryTokens(userMessage).reduce((s, t) => s + (productText(p).includes(t) ? 1 : 0), 0) }))
-          .filter((x) => x.s > 0)
-          .sort((a, b) => b.s - a.s)
-          .slice(0, 5)
-          .map((x) => x.p);
-        if (scored.length > 1) {
-          updateUserProfile(req, { pendingMaterialOptions: scored, awaitingQuantityFor: null });
-          const lines = scored.map((p, i) => `${i + 1}. ${p.nombre} - $${Number(p.precio || 0).toFixed(2)}`).join('\n');
-          return res.json({ reply: `Tengo estas opciones:\n\n${lines}\n\nEscribe el número de la opción.`, proforma: profile.proforma, awaitingQuantity: false });
-        }
-      }
-
-      if (best && quantity) {
-        const price = ensureOfficialPrice(best.nombre) ?? best.precio ?? 0;
+        const price = ensureOfficialPrice(awaitingItem.nombre) ?? awaitingItem.precio ?? 0;
         const current = getUserProfile(req).proforma || [];
-        const idx = current.findIndex((it) => it.nombre === best.nombre);
-        if (idx >= 0) current[idx].cantidad = Number(current[idx].cantidad || 0) + quantity;
-        else current.push({ nombre: best.nombre, cantidad: quantity, precio: price });
-        updateUserProfile(req, { proforma: current, history: [...conversationHistory, { role: 'user', content: userMessage }] });
-
-        let extraPreview = '';
-        if (/\bteja\b/i.test(best.nombre)) {
-          const imgUrl = getProductImageURL(best.nombre) || getProductImageURL('teja espanola');
-          if (imgUrl) extraPreview = `\n\nVista: &lt;a href="${imgUrl}" target="_blank"&gt;Ver imagen&lt;/a&gt;`;
-        }
-
+        const idx = current.findIndex((it) => it.nombre === awaitingItem.nombre);
+        if (idx >= 0) current[idx].cantidad = Number(current[idx].cantidad || 0) + qtyFromMsg;
+        else current.push({ nombre: awaitingItem.nombre, cantidad: qtyFromMsg, precio });
+        const newHistory = [...conversationHistory, { role: 'user', content: userMessage }];
+        updateUserProfile(req, { proforma: current, awaitingQuantityFor: null, pendingMaterialOptions: [], history: newHistory });
         const { table, total } = formatProformaMarkdown(current);
         return res.json({
-          reply: `¡Excelente elección! He añadido ${quantity} de ${best.nombre} a tu proforma.${extraPreview}\n\n${table}\n\nTotal: $${total.toFixed(2)}\n¿Algo más?`,
+          reply: `Agregué ${qtyFromMsg} de ${awaitingItem.nombre} a tu proforma.\n\n${table}\n\nTotal: $${total.toFixed(2)}\n¿Algo más?`,
           proforma: current,
           awaitingQuantity: false
         });
       }
 
-      // Si solo hay un candidato claro pero sin cantidad: pedir cantidad
-      if (best && !quantity) {
-        updateUserProfile(req, { awaitingQuantityFor: best, pendingMaterialOptions: [] });
-        return res.json({ reply: `Tengo ${best.nombre}. ¿Cuántas unidades necesitas?`, proforma: profile.proforma, awaitingQuantity: true });
-      }
-    }
-
-    // Operaciones de quitar (con cantidad específica)
-    if (removeIntent) {
-      const currentList = getUserProfile(req).proforma || [];
-      if (!currentList.length) {
-        return res.json({ reply: 'Tu proforma está vacía. ¿Qué deseas quitar?', awaitingQuantity: false });
-      }
-
-      const best = findBestProductByMessage(userMessage, products);
-      // Si no podemos determinar el producto, pedir que lo aclare listando opciones
-      if (!best) {
-        const nombres = currentList.map((it) => `- ${it.nombre} (cant: ${it.cantidad})`).join('\n');
-        return res.json({ reply: `No identifiqué el producto a quitar. Indícame el nombre exacto o la medida.\n\nActualmente en tu proforma:\n${nombres}`, awaitingQuantity: false });
-      }
-
-      const name = typeof best === 'string' ? best : best.nombre;
-      const removeQty = extractQuantityFromMessage(userMessage);
-      if (!removeQty) {
-        return res.json({ reply: `¿Cuántas unidades deseas quitar de ${name}?`, awaitingQuantity: true });
-      }
-
-      const next = currentList.map((it) =>
-        it.nombre === name ? { ...it, cantidad: Math.max(0, Number(it.cantidad || 0) - removeQty) } : it
-      ).filter((it) => (it.cantidad || 0) > 0);
-
-      updateUserProfile(req, { proforma: next, history: [...conversationHistory, { role: 'user', content: userMessage }] });
-      return renderAndReturn(`He quitado ${removeQty} unidades de ${name}.`);
-    }
-
-    // Operaciones de actualizar cantidad
-    if (updateIntent && quantity) {
-      const best = findBestProductByMessage(userMessage, products) || profile.proforma?.[profile.proforma?.length - 1];
-      if (best) {
-        const name = typeof best === 'string' ? best : best.nombre;
-        const current = (getUserProfile(req).proforma || []).map((it) => (it.nombre === name ? { ...it, cantidad: quantity } : it));
-        updateUserProfile(req, { proforma: current, history: [...conversationHistory, { role: 'user', content: userMessage }] });
-        return renderAndReturn(`He ajustado ${name} a ${quantity} unidades.`);
-      }
-    }
-
-    if (!hasOpenAI) {
-      console.warn('OPENAI_API_KEY ausente o inválida; devolviendo respaldo.');
-      return res.json({ reply: fallbackReply(), awaitingQuantity: false });
-    }
-
-    try {
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-      const completion = await openai.chat.completions.create({
-        model: 'gpt-4-turbo-2024-04-09',
-        response_format: { type: 'json_object' },
-        messages: [ // Construir el historial completo para la IA
-          { role: 'system', content: systemPrompt },
-          ...conversationHistory,
-          { role: 'user', content: userMessage },
-        ],
-        temperature: 0.6,
-        max_tokens: 800,
-      });
-      const botResponseRaw = completion.choices?.[0]?.message?.content;
-
-      if (!botResponseRaw) {
-        return res.json({ reply: fallbackReply(), awaitingQuantity: false });
-      }
-
-      const botResponseJson = JSON.parse(botResponseRaw);
-      let botResponse = botResponseJson.reply;
-      let newProforma = botResponseJson.proforma;
-
-      const userMessageNormalized = normalize(userMessage);
-      if (userMessageNormalized.includes('teja') && userMessageNormalized.includes('espanola')) {
-        const imageUrl = getProductImageURL(userMessage);
-        if (imageUrl) {
-          botResponse += `\n\nPuedes ver una imagen de referencia:<br><img src="${imageUrl}" alt="Imagen de Teja Española" style="width: 100%; max-width: 200px; height: auto; border-radius: 8px; margin-top: 8px;">`;
+      const pendingOptions = Array.isArray(getUserProfile(req).pendingMaterialOptions)
+        ? getUserProfile(req).pendingMaterialOptions
+        : [];
+      const selectionMatch = String(userMessage).trim().match(/^(?:opcion\s*)?(\d{1,2})$/i);
+      if (pendingOptions.length && selectionMatch) {
+        const chosen = pendingOptions[parseInt(selectionMatch[1], 10) - 1];
+        if (chosen) {
+          updateUserProfile(req, { awaitingQuantityFor: chosen, pendingMaterialOptions: [] });
+          return res.json({ reply: `Perfecto, seleccionaste ${chosen.nombre}. Cuantas unidades necesitas?` });
         }
       }
 
-      const newHistory = [...conversationHistory, { role: 'user', content: userMessage }, { role: 'assistant', content: botResponse }];
 
-      if (Array.isArray(newProforma)) {
-        // --- VERIFICACIÓN DE PRECIOS ---
-        // Nunca confiar en el precio que devuelve la IA. Siempre usar el del catálogo oficial.
-        const productList = await getProducts();
-        const productMap = new Map(productList.map(p => [p.nombre, p.precio]));
+      // Operaciones de agregar (local, antes de IA)
+      if (addIntent) {
+        const { dims, thicknessMm } = order;
+        const requestedType = detectTubeTypeFromMessage(userMessage);
+        const inferredType = inferTubeTypeFromDims(dims);
+        const finalType = requestedType || inferredType;
 
-        const verifiedProforma = newProforma.map(item => {
-          const officialPrice = productMap.get(item.nombre);
-          if (officialPrice !== undefined) {
-            // Si el producto existe, nos aseguramos de que el precio sea el correcto.
-            return { ...item, precio: officialPrice };
+        const mentionsTube = /\btubo\b/i.test(userMessage) || requestedType || inferredType;
+
+        // Si se trata de tubos y no tenemos tipo, pedirlo
+        if (mentionsTube && !finalType) {
+          return res.json({ reply: '¿Qué tipo de tubo necesitas: cuadrado, rectangular o redondo?', proforma: profile.proforma, awaitingQuantity: false });
+        }
+
+        // Contradicción en tipo/dimensiones
+        if (requestedType && inferredType && requestedType !== inferredType) {
+          return res.json({ reply: `Mencionas ${dims[0]}x${dims[1]}, suele ser ${inferredType}. ¿Lo quieres ${requestedType} o mejor ${inferredType}?`, proforma: profile.proforma, awaitingQuantity: false });
+        }
+
+        let best = null;
+        if (mentionsTube && finalType) {
+          let candidates = filterTubeCandidates(products, dims, finalType);
+
+          // Intentar invertir dims si no hay match exacto
+          if (candidates.length === 0 && dims) {
+            const invCandidates = filterTubeCandidates(products, [dims[1], dims[0]], finalType);
+            if (invCandidates.length > 0) candidates = invCandidates;
           }
-          return null; // Si la IA alucinó un producto que no existe, lo descartamos.
-        }).filter(Boolean); // Limpiar los nulos
 
-        updateUserProfile(req, { proforma: verifiedProforma, history: newHistory });
+          // Filtrar por espesor si se pidió
+          if (candidates.length > 0 && thicknessMm) {
+            const tStr = `${thicknessMm}mm`;
+            const byThick = candidates.filter((c) => productText(c).includes(tStr));
+            if (byThick.length > 0) candidates = byThick;
+          } else if (candidates.length > 1 && !thicknessMm) {
+            const options = Array.from(new Set(candidates.map((c) => extractThicknessFromName(c.nombre)).filter(Boolean)));
+            if (options.length > 1) {
+              return res.json({ reply: `¿Qué espesor prefieres para ${dims ? dims.join('x') : 'el tubo'} ${finalType}? Opciones: ${options.join(', ')}.`, proforma: profile.proforma, awaitingQuantity: false });
+            }
+          }
+
+          // Calidad preferida o primera
+          const qPref = qualityPreferenceFromMessage(userMessage) || 'primera';
+          const byQuality = candidates.filter((c) => new RegExp(`\\b${qPref}\\b`, 'i').test(c.nombre));
+          if (byQuality.length > 0) candidates = byQuality;
+
+          // Mejor puntaje
+          best = candidates.reduce((acc, cur) => {
+            const score = expandQueryTokens(userMessage).reduce((s, t) => s + (productText(cur).includes(t) ? 1 : 0), 0);
+            return !acc || score > acc.score ? { item: cur, score } : acc;
+          }, null)?.item;
+        }
+
+        if (!best) best = findBestProductByMessage(userMessage, products);
+
+        // Si hay varias coincidencias, ofrecer opciones
+        if (!best && products.length) {
+          const scored = products
+            .map((p) => ({ p, s: expandQueryTokens(userMessage).reduce((s, t) => s + (productText(p).includes(t) ? 1 : 0), 0) }))
+            .filter((x) => x.s > 0)
+            .sort((a, b) => b.s - a.s)
+            .slice(0, 5)
+            .map((x) => x.p);
+          if (scored.length > 1) {
+            updateUserProfile(req, { pendingMaterialOptions: scored, awaitingQuantityFor: null });
+            const lines = scored.map((p, i) => `${i + 1}. ${p.nombre} - $${Number(p.precio || 0).toFixed(2)}`).join('\n');
+            return res.json({ reply: `Tengo estas opciones:\n\n${lines}\n\nEscribe el número de la opción.`, proforma: profile.proforma, awaitingQuantity: false });
+          }
+        }
+
+        if (best && quantity) {
+          const price = ensureOfficialPrice(best.nombre) ?? best.precio ?? 0;
+          const current = getUserProfile(req).proforma || [];
+          const idx = current.findIndex((it) => it.nombre === best.nombre);
+          if (idx >= 0) current[idx].cantidad = Number(current[idx].cantidad || 0) + quantity;
+          else current.push({ nombre: best.nombre, cantidad: quantity, precio: price });
+          updateUserProfile(req, { proforma: current, history: [...conversationHistory, { role: 'user', content: userMessage }] });
+
+          let extraPreview = '';
+          if (/\bteja\b/i.test(best.nombre)) {
+            const imgUrl = getProductImageURL(best.nombre) || getProductImageURL('teja espanola');
+            if (imgUrl) extraPreview = `\n\nVista: &lt;a href="${imgUrl}" target="_blank"&gt;Ver imagen&lt;/a&gt;`;
+          }
+
+          const { table, total } = formatProformaMarkdown(current);
+          return res.json({
+            reply: `¡Excelente elección! He añadido ${quantity} de ${best.nombre} a tu proforma.${extraPreview}\n\n${table}\n\nTotal: $${total.toFixed(2)}\n¿Algo más?`,
+            proforma: current,
+            awaitingQuantity: false
+          });
+        }
+
+        // Si solo hay un candidato claro pero sin cantidad: pedir cantidad
+        if (best && !quantity) {
+          updateUserProfile(req, { awaitingQuantityFor: best, pendingMaterialOptions: [] });
+          return res.json({ reply: `Tengo ${best.nombre}. ¿Cuántas unidades necesitas?`, proforma: profile.proforma, awaitingQuantity: true });
+        }
       }
 
-      return res.json({ reply: botResponse || fallbackReply(), awaitingQuantity: Boolean(getUserProfile(req).awaitingQuantityFor) });
-    } catch (oaErr) {
-      console.error('Error al consultar OpenAI:', oaErr?.response?.status || '', oaErr?.message || oaErr);
-      return res.json({ reply: fallbackReply(), awaitingQuantity: false });
+      // Operaciones de quitar (con cantidad específica)
+      if (removeIntent) {
+        const currentList = getUserProfile(req).proforma || [];
+        if (!currentList.length) {
+          return res.json({ reply: 'Tu proforma está vacía. ¿Qué deseas quitar?', awaitingQuantity: false });
+        }
+
+        const best = findBestProductByMessage(userMessage, products);
+        // Si no podemos determinar el producto, pedir que lo aclare listando opciones
+        if (!best) {
+          const nombres = currentList.map((it) => `- ${it.nombre} (cant: ${it.cantidad})`).join('\n');
+          return res.json({ reply: `No identifiqué el producto a quitar. Indícame el nombre exacto o la medida.\n\nActualmente en tu proforma:\n${nombres}`, awaitingQuantity: false });
+        }
+
+        const name = typeof best === 'string' ? best : best.nombre;
+        const removeQty = extractQuantityFromMessage(userMessage);
+        if (!removeQty) {
+          return res.json({ reply: `¿Cuántas unidades deseas quitar de ${name}?`, awaitingQuantity: true });
+        }
+
+        const next = currentList.map((it) =>
+          it.nombre === name ? { ...it, cantidad: Math.max(0, Number(it.cantidad || 0) - removeQty) } : it
+        ).filter((it) => (it.cantidad || 0) > 0);
+
+        updateUserProfile(req, { proforma: next, history: [...conversationHistory, { role: 'user', content: userMessage }] });
+        return renderAndReturn(`He quitado ${removeQty} unidades de ${name}.`);
+      }
+
+      // Operaciones de actualizar cantidad
+      if (updateIntent && quantity) {
+        const best = findBestProductByMessage(userMessage, products) || profile.proforma?.[profile.proforma?.length - 1];
+        if (best) {
+          const name = typeof best === 'string' ? best : best.nombre;
+          const current = (getUserProfile(req).proforma || []).map((it) => (it.nombre === name ? { ...it, cantidad: quantity } : it));
+          updateUserProfile(req, { proforma: current, history: [...conversationHistory, { role: 'user', content: userMessage }] });
+          return renderAndReturn(`He ajustado ${name} a ${quantity} unidades.`);
+        }
+      }
+
+      if (!hasOpenAI) {
+        console.warn('OPENAI_API_KEY ausente o inválida; devolviendo respaldo.');
+        return res.json({ reply: fallbackReply(), awaitingQuantity: false });
+      }
+
+      try {
+        const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+        const completion = await openai.chat.completions.create({
+          model: 'gpt-4-turbo-2024-04-09',
+          response_format: { type: 'json_object' },
+          messages: [ // Construir el historial completo para la IA
+            { role: 'system', content: systemPrompt },
+            ...conversationHistory,
+            { role: 'user', content: userMessage },
+          ],
+          temperature: 0.6,
+          max_tokens: 800,
+        });
+        const botResponseRaw = completion.choices?.[0]?.message?.content;
+
+        if (!botResponseRaw) {
+          return res.json({ reply: fallbackReply(), awaitingQuantity: false });
+        }
+
+        const botResponseJson = JSON.parse(botResponseRaw);
+        let botResponse = botResponseJson.reply;
+        let newProforma = botResponseJson.proforma;
+
+        const userMessageNormalized = normalize(userMessage);
+        if (userMessageNormalized.includes('teja') && userMessageNormalized.includes('espanola')) {
+          const imageUrl = getProductImageURL(userMessage);
+          if (imageUrl) {
+            botResponse += `\n\nPuedes ver una imagen de referencia:<br><img src="${imageUrl}" alt="Imagen de Teja Española" style="width: 100%; max-width: 200px; height: auto; border-radius: 8px; margin-top: 8px;">`;
+          }
+        }
+
+        const newHistory = [...conversationHistory, { role: 'user', content: userMessage }, { role: 'assistant', content: botResponse }];
+
+        if (Array.isArray(newProforma)) {
+          // --- VERIFICACIÓN DE PRECIOS ---
+          // Nunca confiar en el precio que devuelve la IA. Siempre usar el del catálogo oficial.
+          const productList = await getProducts();
+          const productMap = new Map(productList.map(p => [p.nombre, p.precio]));
+
+          const verifiedProforma = newProforma.map(item => {
+            const officialPrice = productMap.get(item.nombre);
+            if (officialPrice !== undefined) {
+              // Si el producto existe, nos aseguramos de que el precio sea el correcto.
+              return { ...item, precio: officialPrice };
+            }
+            return null; // Si la IA alucinó un producto que no existe, lo descartamos.
+          }).filter(Boolean); // Limpiar los nulos
+
+          updateUserProfile(req, { proforma: verifiedProforma, history: newHistory });
+        }
+
+        return res.json({ reply: botResponse || fallbackReply(), awaitingQuantity: Boolean(getUserProfile(req).awaitingQuantityFor) });
+      } catch (oaErr) {
+        console.error('Error al consultar OpenAI:', oaErr?.response?.status || '', oaErr?.message || oaErr);
+        return res.json({ reply: fallbackReply(), awaitingQuantity: false });
+      }
+    } catch (error) {
+      console.error('Error no controlado en /chat:', error);
+      return res.status(500).json({ error: 'Error interno del servidor. Revisa los logs para más detalles.' });
     }
-  } catch (error) {
-    console.error('Error no controlado en /chat:', error);
-    return res.status(500).json({ error: 'Error interno del servidor. Revisa los logs para más detalles.' });
+  } catch (e) {
+    console.error('ERROR INESPERADO Y NO CONTROLADO EN /chat:', e);
+    res.status(500).json({
+        error: 'Ocurrió un error fatal en el servidor.',
+        message: e.message,
+        stack: e.stack
+    });
   }
 });
 

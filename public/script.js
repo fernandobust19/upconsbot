@@ -181,5 +181,5 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Mensaje inicial del asistente
-    addMessage('Bienvenido a UP-CONS, tu aliado en construcción. ¿Cuál es tu nombre?', 'bot');
+    addMessage('¡Hola! Bienvenido a UP CONS, su aliado en construcción. Soy su asistente virtual. Para ofrecerle una atención personalizada, ¿podría indicarme su nombre?', 'bot');
 });

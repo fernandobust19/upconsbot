@@ -799,25 +799,28 @@ Necesitas agregar algo mas?`, awaitingQuantity: false });
 
       const awaitingItem = getUserProfile(req).awaitingQuantityFor;
       if (awaitingItem) {
-        const qtyFromMsg = extractQuantityFromMessage(userMessage) || parseInt(String(userMessage).trim(), 10);
-        if (!qtyFromMsg || Number.isNaN(qtyFromMsg)) {
-          return res.json({ reply: `¿Cuántas unidades necesitas de ${awaitingItem.nombre}?`, proforma: getUserProfile(req).proforma, awaitingQuantity: true });
-        }
-
-        const price = ensureOfficialPrice(awaitingItem.nombre) ?? awaitingItem.precio ?? 0;
-        const current = getUserProfile(req).proforma || [];
-        const idx = current.findIndex((it) => it.nombre === awaitingItem.nombre);
-        if (idx >= 0) current[idx].cantidad = Number(current[idx].cantidad || 0) + qtyFromMsg;
-        else current.push({ nombre: awaitingItem.nombre, cantidad: qtyFromMsg, precio });
-        const newHistory = [...conversationHistory, { role: 'user', content: userMessage }];
-        updateUserProfile(req, { proforma: current, awaitingQuantityFor: null, pendingMaterialOptions: [], history: newHistory });
-        const { table, total } = formatProformaMarkdown(current);
-        return res.json({
-          reply: `Agregué ${qtyFromMsg} de ${awaitingItem.nombre} a tu proforma.\n\n${table}\n\nTotal: $${total.toFixed(2)}\n¿Algo más?`,
-          proforma: current,
-          awaitingQuantity: false
-        });
-      }
+              const qtyFromMsg = extractQuantityFromMessage(userMessage) || parseInt(String(userMessage).trim(), 10);
+              if (!qtyFromMsg || Number.isNaN(qtyFromMsg)) {
+                return res.json({ reply: `¿Cuántas unidades necesitas de ${awaitingItem.nombre}?`, proforma: getUserProfile(req).proforma, awaitingQuantity: true });
+              }
+        
+              const price = ensureOfficialPrice(awaitingItem.nombre) ?? awaitingItem.precio ?? 0;
+              const current = getUserProfile(req).proforma || [];
+              const idx = current.findIndex((it) => it.nombre === awaitingItem.nombre);
+              if (idx >= 0) current[idx].cantidad = Number(current[idx].cantidad || 0) + qtyFromMsg;
+              else current.push({ nombre: awaitingItem.nombre, cantidad: qtyFromMsg, precio });
+              
+              const { table, total } = formatProformaMarkdown(current);
+              const reply = `Agregué ${qtyFromMsg} de ${awaitingItem.nombre} a tu proforma.\n\n${table}\n\nTotal: $${total.toFixed(2)}\n¿Algo más?`;
+        
+              const newHistory = [...conversationHistory, { role: 'user', content: userMessage }, { role: 'assistant', content: reply }];
+              updateUserProfile(req, { proforma: current, awaitingQuantityFor: null, pendingMaterialOptions: [], history: newHistory });
+              
+              return res.json({
+                reply: reply,
+                proforma: current,
+                awaitingQuantity: false
+              });      }
 
       const pendingOptions = Array.isArray(getUserProfile(req).pendingMaterialOptions)
         ? getUserProfile(req).pendingMaterialOptions

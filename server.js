@@ -778,20 +778,20 @@ Elige el numero de la opcion y te pregunto cuantas unidades necesitas.`;
 ${table}
 
 Total: $${total.toFixed(2)}
-Necesitas agregar algo mas?` });
+Necesitas agregar algo mas?`, awaitingQuantity: false });
     };
 
 
     if (resetIntent) {
       const keepName = getUserProfile(req).nombre;
       updateUserProfile(req, { nombre: keepName || null, proforma: [], history: [], pendingMaterialOptions: [], awaitingQuantityFor: null });
-      return res.json({ reply: 'Listo, reinicie la conversacion y vacie tu proforma. Cuentame que necesitas cotizar ahora.' });
+      return res.json({ reply: 'Listo, reinicie la conversacion y vacie tu proforma. Cuentame que necesitas cotizar ahora.', awaitingQuantity: false });
     }
 
 
     if (wantsView) {
       if (!profile.proforma?.length) {
-        return res.json({ reply: 'Aun no has agregado productos. Que deseas cotizar?' });
+        return res.json({ reply: 'Aun no has agregado productos. Que deseas cotizar?', awaitingQuantity: false });
       }
       return renderAndReturn('Aqui tienes tu proforma actual:');
     }
@@ -934,20 +934,20 @@ Necesitas agregar algo mas?` });
     if (removeIntent) {
       const currentList = getUserProfile(req).proforma || [];
       if (!currentList.length) {
-        return res.json({ reply: 'Tu proforma está vacía. ¿Qué deseas quitar?' });
+        return res.json({ reply: 'Tu proforma está vacía. ¿Qué deseas quitar?', awaitingQuantity: false });
       }
 
       const best = findBestProductByMessage(userMessage, products);
       // Si no podemos determinar el producto, pedir que lo aclare listando opciones
       if (!best) {
         const nombres = currentList.map((it) => `- ${it.nombre} (cant: ${it.cantidad})`).join('\n');
-        return res.json({ reply: `No identifiqué el producto a quitar. Indícame el nombre exacto o la medida.\n\nActualmente en tu proforma:\n${nombres}` });
+        return res.json({ reply: `No identifiqué el producto a quitar. Indícame el nombre exacto o la medida.\n\nActualmente en tu proforma:\n${nombres}`, awaitingQuantity: false });
       }
 
       const name = typeof best === 'string' ? best : best.nombre;
       const removeQty = extractQuantityFromMessage(userMessage);
       if (!removeQty) {
-        return res.json({ reply: `¿Cuántas unidades deseas quitar de ${name}?` });
+        return res.json({ reply: `¿Cuántas unidades deseas quitar de ${name}?`, awaitingQuantity: true });
       }
 
       const next = currentList.map((it) =>
@@ -971,7 +971,7 @@ Necesitas agregar algo mas?` });
 
     if (!hasOpenAI) {
       console.warn('OPENAI_API_KEY ausente o inválida; devolviendo respaldo.');
-      return res.json({ reply: fallbackReply() });
+      return res.json({ reply: fallbackReply(), awaitingQuantity: false });
     }
 
     try {
@@ -990,7 +990,7 @@ Necesitas agregar algo mas?` });
       const botResponseRaw = completion.choices?.[0]?.message?.content;
 
       if (!botResponseRaw) {
-        return res.json({ reply: fallbackReply() });
+        return res.json({ reply: fallbackReply(), awaitingQuantity: false });
       }
 
       const botResponseJson = JSON.parse(botResponseRaw);
@@ -1025,10 +1025,10 @@ Necesitas agregar algo mas?` });
         updateUserProfile(req, { proforma: verifiedProforma, history: newHistory });
       }
 
-      return res.json({ reply: botResponse || fallbackReply() });
+      return res.json({ reply: botResponse || fallbackReply(), awaitingQuantity: Boolean(getUserProfile(req).awaitingQuantityFor) });
     } catch (oaErr) {
       console.error('Error al consultar OpenAI:', oaErr?.response?.status || '', oaErr?.message || oaErr);
-      return res.json({ reply: fallbackReply() });
+      return res.json({ reply: fallbackReply(), awaitingQuantity: false });
     }
   } catch (error) {
     console.error('Error no controlado en /chat:', error);
